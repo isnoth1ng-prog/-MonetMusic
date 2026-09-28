@@ -27,10 +27,12 @@ struct PlayerView: View {
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .blur(radius: 60)
                         .overlay(Color.black.opacity(0.5))
                 } placeholder: {
                     Color.monetBackground
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .ignoresSafeArea()
             } else {
@@ -80,6 +82,7 @@ struct PlayerView: View {
                                 .foregroundColor(.white.opacity(0.7))
                                 .lineLimit(1)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         Spacer()
                         
                         Button(action: toggleLike) {
