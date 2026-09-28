@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @State private var recentTracks: [Track] = []
     @State private var recommendedTracks: [Track] = []
+    @State private var isGeneratingVibe = false
     
     private let musicService: MusicService = ITunesMusicService()
     @StateObject private var audioPlayer = AudioPlayerService.shared
@@ -37,6 +38,39 @@ struct HomeView: View {
                             .padding(.horizontal, MonetTheme.padding)
                             .padding(.top, 20)
                         
+                        // Моя Волна (My Vibe)
+                        Button(action: startMyVibe) {
+                            ZStack {
+                                LinearGradient(colors: [Color(red: 0.1, green: 0.5, blue: 1.0), Color(red: 0.8, green: 0.2, blue: 0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    .cornerRadius(24)
+                                    .shadow(color: Color(red: 0.8, green: 0.2, blue: 0.8).opacity(0.6), radius: 15, y: 10)
+                                
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("МОЯ ВОЛНА")
+                                            .font(.system(size: 26, weight: .black))
+                                            .foregroundColor(.white)
+                                        Text(isGeneratingVibe ? "Подбираем поток..." : "Бесконечная музыка под тебя")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.8))
+                                    }
+                                    Spacer()
+                                    if isGeneratingVibe {
+                                        ProgressView().tint(.white)
+                                    } else {
+                                        Image(systemName: "play.circle.fill")
+                                            .font(.system(size: 44))
+                                            .foregroundColor(.white)
+                                            .shadow(radius: 5)
+                                    }
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 28)
+                            }
+                        }
+                        .padding(.horizontal, MonetTheme.padding)
+                        .disabled(isGeneratingVibe)
+                        
                         // Example section: Trending (Fetched from a preset query)
                         SectionView(title: "В тренде", tracks: recentTracks, isLarge: true) { track in
                             audioPlayer.play(track: track, queue: recentTracks)
@@ -66,6 +100,28 @@ struct HomeView: View {
             }
             if let fresh = try? await musicService.search(query: "новинки музыки русские") {
                 await MainActor.run { self.recommendedTracks = fresh }
+            }
+        }
+    }
+    
+    private func startMyVibe() {
+        guard !isGeneratingVibe else { return }
+        isGeneratingVibe = true
+        
+        Task {
+            let artists = ["Miyagi", "Скриптонит", "Баста", "Oxxxymiron", "Macan", "Anna Asti", "LSP", "Kizaru", "Pharaoh", "Markul"]
+            let randomArtist = artists.randomElement() ?? "Miyagi"
+            
+            if let tracks = try? await musicService.search(query: randomArtist) {
+                let shuffled = tracks.shuffled()
+                await MainActor.run {
+                    self.isGeneratingVibe = false
+                    if let first = shuffled.first {
+                        audioPlayer.play(track: first, queue: shuffled)
+                    }
+                }
+            } else {
+                await MainActor.run { self.isGeneratingVibe = false }
             }
         }
     }

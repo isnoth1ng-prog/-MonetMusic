@@ -11,6 +11,7 @@ struct PlayerView: View {
     @State private var showingLyrics = false
     @State private var coverImage: UIImage? = nil
     @State private var dragOffset = CGSize.zero
+    @AppStorage("lyricsFontSize") private var lyricsFontSize: Double = 24.0
     
     @State private var lyrics: Lyrics?
     @State private var isLoadingLyrics = false
@@ -182,7 +183,7 @@ struct PlayerView: View {
                         Spacer(minLength: 16)
                         
                         // Bottom row
-                        HStack {
+                        HStack(spacing: 24) {
                             Button(action: toggleLyrics) {
                                 Image(systemName: "quote.bubble")
                                     .font(.system(size: 20, weight: showingLyrics ? .bold : .regular))
@@ -191,7 +192,21 @@ struct PlayerView: View {
                                     .background(showingLyrics ? Color.white : Color.clear)
                                     .clipShape(Circle())
                             }
+                            
+                            if showingLyrics {
+                                Button(action: cycleFontSize) {
+                                    Image(systemName: "textformat.size")
+                                        .font(.system(size: 18))
+                                        .foregroundColor(.white.opacity(0.8))
+                                        .frame(width: 40, height: 40)
+                                        .background(Color.white.opacity(0.15))
+                                        .clipShape(Circle())
+                                }
+                                .transition(.opacity)
+                            }
+                            
                             Spacer()
+                            
                             Button(action: {}) {
                                 Image(systemName: "list.bullet")
                                     .font(.system(size: 20))
@@ -233,7 +248,7 @@ struct PlayerView: View {
                                 let isActive = isLineActive(index: index, currentTime: currentTime, lines: lyrics.lines)
                                 
                                 Text(line.text)
-                                    .font(.system(size: isActive ? 28 : 24, weight: .bold))
+                                    .font(.system(size: isActive ? CGFloat(lyricsFontSize + 4) : CGFloat(lyricsFontSize), weight: .bold))
                                     .foregroundColor(isActive ? .white : .white.opacity(0.4))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .scaleEffect(isActive ? 1.05 : 1.0, anchor: .leading)
@@ -307,6 +322,15 @@ struct PlayerView: View {
         }
         if showingLyrics && lyrics == nil {
             fetchLyrics()
+        }
+    }
+    
+    private func cycleFontSize() {
+        let sizes: [Double] = [16.0, 20.0, 24.0, 28.0, 32.0]
+        if let current = sizes.firstIndex(of: lyricsFontSize) {
+            lyricsFontSize = sizes[(current + 1) % sizes.count]
+        } else {
+            lyricsFontSize = 24.0
         }
     }
     

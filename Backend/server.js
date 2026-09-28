@@ -50,10 +50,25 @@ app.get('/stream', (req, res) => {
     });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`========================================`);
+app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`\n========================================`);
     console.log(` MonetMusic Backend is running!`);
     console.log(` Port: ${PORT}`);
     console.log(` Mode: DOWNLOAD & CACHE (Bulletproof)`);
-    console.log(`========================================`);
+    console.log(`========================================\n`);
+    
+    // Attempt to start localtunnel automatically for remote listening
+    try {
+        const localtunnel = require('localtunnel');
+        const tunnel = await localtunnel({ port: PORT });
+        console.log(`[REMOTE LISTENING URL]`);
+        console.log(`Скопируйте эту ссылку и вставьте в Настройки -> Сервер:`);
+        console.log(`👉  ${tunnel.url}  👈\n`);
+        
+        tunnel.on('close', () => {
+            console.log('Tunnel closed');
+        });
+    } catch (e) {
+        console.log(`[REMOTE LISTENING] Для удаленного доступа установите пакет: npm install localtunnel`);
+    }
 });

@@ -1,8 +1,8 @@
 {
   "images" : [
     {
-      "filename" : "Icon.png",
       "idiom" : "universal",
+      "filename" : "icon.jpg",
       "platform" : "ios",
       "size" : "1024x1024"
     }

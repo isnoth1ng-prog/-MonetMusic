@@ -16,7 +16,7 @@ struct MonetMusicApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
-                .preferredColorScheme(colorScheme)
+                .preferredColorScheme(.dark)
         }
         .modelContainer(for: [LibraryTrack.self, UserPlaylist.self])
     }
