@@ -28,9 +28,6 @@ final class AppleMusicSourceAdapter: PlaybackSourceAdapter {
     let id: PlaybackSourceID = .appleMusic
 
     func prepare(_ track: Track) async throws -> PlaybackSession {
-        guard track.source != .audius else {
-            throw RhythmError.noResults
-        }
         guard await AppleMusicService.shared.requestAuthorization() else {
             throw RhythmError.unauthorized
         }
