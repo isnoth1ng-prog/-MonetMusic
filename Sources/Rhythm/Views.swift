@@ -928,7 +928,7 @@ struct MiniPlayerView: View {
 struct FullPlayerView: View {
     @EnvironmentObject private var player: RhythmPlayer
     @Environment(\.dismiss) private var dismiss
-    @State private var showLyrics = false
+    @State private var showCover = false
 
     var body: some View {
         ZStack {
@@ -952,7 +952,12 @@ struct FullPlayerView: View {
                                     .font(.system(size: 9, weight: .bold))
                                     .tracking(2.1)
                                     .foregroundStyle(RhythmTheme.secondary)
-                                if player.usingAppleMusic {
+                                if player.currentTrack?.source == .audius {
+                                    Text("FULL STREAM")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .tracking(1.2)
+                                        .foregroundStyle(RhythmTheme.accent)
+                                } else if player.usingAppleMusic {
                                     Text("APPLE MUSIC")
                                         .font(.system(size: 8, weight: .bold))
                                         .tracking(1.2)
@@ -978,27 +983,46 @@ struct FullPlayerView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 10)
 
-                        Button {
-                            showLyrics = true
-                        } label: {
-                            ZStack {
+                        // Lyrics live in the player itself. No sheet, no popup.
+                        ZStack {
+                            if !showCover && !player.lyrics.isEmpty {
+                                LyricsFlowView(lines: player.lyrics, progress: player.progress)
+                                    .frame(
+                                        width: min(proxy.size.width - 32, 390),
+                                        height: min(max(proxy.size.height * 0.46, 330), 470)
+                                    )
+                                    .rhythmGlass(30)
+                                    .transition(.opacity)
+                            } else {
                                 CoverView(
                                     url: player.currentTrack?.highResCoverURL,
                                     size: min(proxy.size.width - 42, 365),
                                     radius: 30
                                 )
+                                .transition(.opacity)
+                            }
 
-                                if !player.lyrics.isEmpty {
-                                    Image(systemName: "quote.opening")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(.white.opacity(0.92))
-                                        .frame(width: 52, height: 52)
-                                        .rhythmGlass(28)
+                            if !player.lyrics.isEmpty {
+                                VStack {
+                                    HStack {
+                                        Spacer()
+                                        Button {
+                                            withAnimation(.easeInOut(duration: 0.25)) {
+                                                showCover.toggle()
+                                            }
+                                        } label: {
+                                            Image(systemName: showCover ? "quote.bubble.fill" : "rectangle.portrait.fill")
+                                                .font(.system(size: 14, weight: .bold))
+                                                .frame(width: 44, height: 44)
+                                                .rhythmGlass(22)
+                                        }
+                                    }
+                                    Spacer()
                                 }
+                                .padding(14)
                             }
                         }
-                        .buttonStyle(.plain)
-                        .padding(.top, 20)
+                        .padding(.top, 18)
 
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 5) {
@@ -1023,7 +1047,7 @@ struct FullPlayerView: View {
                             }
                         }
                         .padding(.horizontal, 22)
-                        .padding(.top, 24)
+                        .padding(.top, 22)
 
                         Slider(
                             value: Binding(get: { player.progress }, set: { player.seek($0) }),
@@ -1068,23 +1092,6 @@ struct FullPlayerView: View {
                         .font(.system(size: 19, weight: .semibold))
                         .padding(.top, 23)
 
-                        Button { showLyrics = true } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "quote.bubble")
-                                Text(player.lyrics.isEmpty ? "Текст недоступен" : "Показать текст")
-                                Spacer()
-                                Image(systemName: "arrow.up.right")
-                                    .font(.system(size: 11, weight: .bold))
-                            }
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(player.lyrics.isEmpty ? RhythmTheme.secondary : Color.primary)
-                            .padding(15)
-                            .rhythmGlass(18)
-                        }
-                        .disabled(player.lyrics.isEmpty)
-                        .padding(.horizontal, 18)
-                        .padding(.top, 22)
-
                         if let error = player.streamError {
                             Text(error)
                                 .font(.system(size: 11, weight: .medium))
@@ -1100,49 +1107,11 @@ struct FullPlayerView: View {
             }
         }
         .foregroundStyle(Color.primary)
-        .sheet(isPresented: $showLyrics) {
-            LyricsSheet().environmentObject(player)
-        }
     }
 
     private func time(_ value: Double) -> String {
         let seconds = max(0, Int(value.rounded()))
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
-    }
-}
-
-struct LyricsSheet: View {
-    @EnvironmentObject private var player: RhythmPlayer
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        ZStack {
-            RhythmTheme.background.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("ТЕКСТ")
-                            .font(.system(size: 10, weight: .bold))
-                            .tracking(2.2)
-                            .foregroundStyle(RhythmTheme.secondary)
-                        Text(player.currentTrack?.title ?? "")
-                            .font(.system(size: 15, weight: .semibold))
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .frame(width: 36, height: 36)
-                            .rhythmGlass(18)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
-                LyricsFlowView(lines: player.lyrics, progress: player.progress)
-            }
-        }
     }
 }
 
