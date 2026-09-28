@@ -101,6 +101,49 @@ final class MusicCatalog {
             .map { LyricLine(text: $0, time: 0) }
     }
 
+    func wave(seed: Track? = nil, favorites: [Track], history: [Track]) async -> [Track] {
+        var seeds = [Track]()
+        if let seed { seeds.append(seed) }
+        seeds.append(contentsOf: favorites.prefix(5))
+        seeds.append(contentsOf: history.prefix(8))
+        var candidates: [Track] = []
+
+        let artists = Array(NSOrderedSet(array: seeds.compactMap { $0.artist })) as? [String] ?? []
+        let genres = Array(NSOrderedSet(array: seeds.compactMap { $0.genre })) as? [String] ?? []
+
+        for artist in artists.prefix(3) {
+            if let result = try? await search(artist).tracks {
+                candidates.append(contentsOf: result)
+            }
+        }
+        for genre in genres.prefix(2) {
+            if let result = try? await search(genre).tracks {
+                candidates.append(contentsOf: result)
+            }
+        }
+
+        let blocked = Set(seeds.map { $0.id })
+        var unique = Dictionary(grouping: candidates.filter { !blocked.contains($0.id) }, by: { $0.id })
+            .compactMap { $0.value.first }
+        unique.sort {
+            let left = score($0, seeds: seeds)
+            let right = score($1, seeds: seeds)
+            if left == right { return $0.title < $1.title }
+            return left > right
+        }
+        return Array(unique.prefix(30))
+    }
+
+    private func score(_ track: Track, seeds: [Track]) -> Int {
+        var value = 0
+        for seed in seeds {
+            if track.artist.caseInsensitiveCompare(seed.artist) == .orderedSame { value += 5 }
+            if let a = track.genre, let b = seed.genre, a.caseInsensitiveCompare(b) == .orderedSame { value += 2 }
+            if track.albumID == seed.albumID { value += 1 }
+        }
+        return value
+    }
+
     private func searchURL(term: String, country: String, entity: String, limit: Int) -> URL {
         var c = URLComponents(string: "https://itunes.apple.com/search")!
         c.queryItems = [
