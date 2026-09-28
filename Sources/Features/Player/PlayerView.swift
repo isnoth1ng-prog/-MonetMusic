@@ -62,6 +62,23 @@ struct PlayerView: View {
                     .onTapGesture {
                         closePlayer()
                     }
+                    .gesture(
+                        DragGesture()
+                            .onChanged { gesture in
+                                if gesture.translation.height > 0 {
+                                    dragOffset = gesture.translation
+                                }
+                            }
+                            .onEnded { gesture in
+                                if gesture.translation.height > 80 {
+                                    closePlayer()
+                                } else {
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                        dragOffset = .zero
+                                    }
+                                }
+                            }
+                    )
                     
                     Spacer(minLength: 16)
                     
@@ -186,26 +203,8 @@ struct PlayerView: View {
                         .padding(.bottom, 32)
                     }
                 }
-            }
         }
         .offset(y: dragOffset.height)
-        .gesture(
-            DragGesture(minimumDistance: 30)
-                .onChanged { gesture in
-                    if gesture.translation.height > 0 {
-                        dragOffset = gesture.translation
-                    }
-                }
-                .onEnded { gesture in
-                    if gesture.translation.height > 100 {
-                        closePlayer()
-                    } else {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                            dragOffset = .zero
-                        }
-                    }
-                }
-        )
         .onChange(of: currentTrack?.id) { oldId, newId in
             loadCoverImage()
             if showingLyrics {
