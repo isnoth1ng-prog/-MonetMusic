@@ -952,16 +952,15 @@ struct FullPlayerView: View {
                                     .font(.system(size: 9, weight: .bold))
                                     .tracking(2.1)
                                     .foregroundStyle(RhythmTheme.secondary)
-                                if player.currentTrack?.source == .audius {
-                                    Text("FULL STREAM")
-                                        .font(.system(size: 8, weight: .bold))
-                                        .tracking(1.2)
-                                        .foregroundStyle(RhythmTheme.accent)
-                                } else if player.usingAppleMusic {
-                                    Text("APPLE MUSIC")
-                                        .font(.system(size: 8, weight: .bold))
-                                        .tracking(1.2)
-                                        .foregroundStyle(RhythmTheme.accent)
+                                Text(player.status.label)
+                                    .font(.system(size: 8, weight: .bold))
+                                    .tracking(1.2)
+                                    .foregroundStyle(player.status == .failed ? .red : RhythmTheme.accent)
+                                if player.activeSource != nil {
+                                    Text(player.sourceLabel.uppercased())
+                                        .font(.system(size: 7, weight: .bold))
+                                        .tracking(1.0)
+                                        .foregroundStyle(RhythmTheme.secondary)
                                 }
                             }
 
@@ -1093,12 +1092,20 @@ struct FullPlayerView: View {
                         .padding(.top, 23)
 
                         if let error = player.streamError {
-                            Text(error)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(RhythmTheme.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 28)
-                                .padding(.vertical, 14)
+                            VStack(spacing: 5) {
+                                Text(error)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(RhythmTheme.secondary)
+                                    .multilineTextAlignment(.center)
+                                if let last = player.diagnostics.last {
+                                    Text("\(last.source): \(last.message)")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundStyle(RhythmTheme.secondary.opacity(0.75))
+                                        .multilineTextAlignment(.center)
+                                }
+                            }
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 14)
                         }
 
                         Spacer(minLength: 30)
