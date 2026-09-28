@@ -31,12 +31,22 @@ class AudioPlayerService: ObservableObject {
     }
     
     func play(track: Track, queue: [Track] = []) {
-        guard let url = track.audioURL else { return }
-        
         self.queue = queue
         self.currentTrack = track
         
-        let playerItem = AVPlayerItem(url: url)
+        var streamURL = track.audioURL
+        let backendIP = UserDefaults.standard.string(forKey: "backendURL") ?? ""
+        if !backendIP.isEmpty {
+            let query = "\(track.artist) \(track.title)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            let host = backendIP.contains("http") ? backendIP : "http://\(backendIP):3000"
+            if let url = URL(string: "\(host)/stream?q=\(query)") {
+                streamURL = url
+            }
+        }
+        
+        guard let finalURL = streamURL else { return }
+        
+        let playerItem = AVPlayerItem(url: finalURL)
         if player == nil {
             player = AVPlayer(playerItem: playerItem)
         } else {

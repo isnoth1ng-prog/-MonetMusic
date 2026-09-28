@@ -1,0 +1,12 @@
+{
+  "name": "monet-music-backend",
+  "version": "1.0.0",
+  "description": "Backend proxy for extracting YouTube audio streams for MonetMusic",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

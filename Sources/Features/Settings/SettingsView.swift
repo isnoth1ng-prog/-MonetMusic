@@ -37,6 +37,16 @@ struct SettingsView: View {
                     }
                     .listRowBackground(Color.monetSurface)
                     
+                    Section(header: Text("Сервер полных треков (YouTube)").foregroundColor(.monetSecondary), footer: Text("Укажите IP-адрес вашего ПК в локальной сети (например, 192.168.1.55) или адрес сервера.")) {
+                        TextField("IP адрес ПК", text: Binding(
+                            get: { UserDefaults.standard.string(forKey: "backendURL") ?? "" },
+                            set: { UserDefaults.standard.set($0, forKey: "backendURL") }
+                        ))
+                        .foregroundColor(.white)
+                        .keyboardType(.numbersAndPunctuation)
+                    }
+                    .listRowBackground(Color.monetSurface)
+                    
                     Section(header: Text("Информация").foregroundColor(.monetSecondary)) {
                         HStack {
                             Text("Версия")
