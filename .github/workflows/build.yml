@@ -18,14 +18,14 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Build Archive
+      - name: Build App
         run: |
-          xcodebuild clean archive \
+          xcodebuild clean build \
             -project MonetMusic.xcodeproj \
             -scheme MonetMusic \
             -configuration Release \
-            -archivePath $PWD/build/MonetMusic.xcarchive \
             -sdk iphoneos \
+            CONFIGURATION_BUILD_DIR=$PWD/build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
@@ -33,7 +33,7 @@ jobs:
       - name: Create Payload and IPA
         run: |
           mkdir -p Payload
-          cp -r build/MonetMusic.xcarchive/Products/Applications/MonetMusic.app Payload/
+          cp -r build/MonetMusic.app Payload/
           zip -r MonetMusic.ipa Payload
           
       - name: Upload IPA
