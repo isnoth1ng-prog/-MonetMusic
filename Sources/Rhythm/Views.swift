@@ -694,7 +694,7 @@ struct AlbumView: View {
                         .background(Color.primary, in: Capsule())
                 }
 
-                Text("(tracks.count) треков").sectionTitle()
+                Text("\(tracks.count) треков").sectionTitle()
 
                 if loading {
                     ProgressView().tint(RhythmTheme.accent).frame(maxWidth: .infinity).padding(50)
@@ -835,8 +835,8 @@ struct SettingsView: View {
                 }
 
                 settingsSection("Rhythm") {
-                    LabeledContent("Версия", value: "4.0")
-                    LabeledContent("Каталог", value: "Apple Music + каталог метаданных")
+                    LabeledContent("Версия", value: "4.1")
+                    LabeledContent("Каталог", value: "Audius full stream + Apple Music")
                     LabeledContent("Тексты", value: "LRCLIB")
                     LabeledContent("Wave", value: "Адаптивная, трек за треком")
                 }
