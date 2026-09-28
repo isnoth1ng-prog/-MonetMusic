@@ -295,7 +295,7 @@ final class MusicCatalog {
               lyricDurationMatches(value.duration, track.duration) else { return [] }
 
         if let synced = value.syncedLyrics {
-            let parsed = parseLRC(synced, maxDuration: track.duration)
+            let parsed = parseLRC(synced).filter { isValidLyricLine($0.text) && $0.time <= track.duration + 8 }
             if parsed.count >= 2 { return parsed }
         }
 
