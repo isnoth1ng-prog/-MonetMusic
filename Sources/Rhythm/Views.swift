@@ -85,12 +85,12 @@ struct HomeView: View {
                 .buttonStyle(.plain)
 
                 if !store.favorites.isEmpty {
-                    SectionHeader(title: "Любимое", action: "Все") {}
+                    Text("Любимое").sectionTitle()
                     HorizontalTracks(tracks: Array(store.favorites.prefix(10)))
                 }
 
                 if !store.history.isEmpty {
-                    SectionHeader(title: "Недавно слушал", action: "Все") {}
+                    Text("Недавно слушал").sectionTitle()
                     VerticalTracks(tracks: Array(store.history.prefix(8)))
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
@@ -473,8 +473,7 @@ struct MiniPlayerView: View {
     @EnvironmentObject private var player: RhythmPlayer
     let open: () -> Void
     var body: some View {
-        Button(action: open) {
-            HStack(spacing: 10) {
+        HStack(spacing: 10) {
                 CoverView(url: player.currentTrack?.highResCoverURL, size: 46, radius: 12)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(player.currentTrack?.title ?? "").font(.system(size: 14, weight: .semibold)).lineLimit(1)
@@ -487,7 +486,8 @@ struct MiniPlayerView: View {
             }
             .padding(8).padding(.trailing, 4).rhythmGlass(17)
         }
-        .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .onTapGesture(perform: open)
         .padding(.horizontal, 10)
     }
 }
@@ -691,7 +691,7 @@ struct TrackRow: View {
 
             Menu {
                 Button {
-                    player.toggleLike()
+                    player.toggleLike(track)
                 } label: {
                     Label(player.isLiked(track) ? "Убрать из любимого" : "В любимое", systemImage: player.isLiked(track) ? "heart.slash" : "heart")
                 }
