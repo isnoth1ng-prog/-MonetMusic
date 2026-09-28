@@ -1,0 +1,113 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 109145165628,
+      "run_id": 36486680918,
+      "workflow_name": "Build Unsigned IPA",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36486680918",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOUw2NfM8AAAAZaY8PPA",
+      "head_sha": "ba42484e53dfcabe98b6e727f9deb3e2697ce743",
+      "url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/jobs/109145165628",
+      "html_url": "https://github.com/isnoth1ng-prog/-MonetMusic/actions/runs/36486680918/job/109145165628",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-09-28T21:31:39Z",
+      "started_at": "2026-09-28T21:31:45Z",
+      "completed_at": "2026-09-28T21:32:19Z",
+      "name": "build",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-28T21:31:45Z",
+          "completed_at": "2026-09-28T21:31:45Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-28T21:31:45Z",
+          "completed_at": "2026-09-28T21:31:48Z"
+        },
+        {
+          "name": "Select latest Xcode",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-28T21:31:48Z",
+          "completed_at": "2026-09-28T21:31:48Z"
+        },
+        {
+          "name": "Install Xcodegen",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-28T21:31:48Z",
+          "completed_at": "2026-09-28T21:31:53Z"
+        },
+        {
+          "name": "Generate Xcode Project",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-09-28T21:31:53Z",
+          "completed_at": "2026-09-28T21:31:53Z"
+        },
+        {
+          "name": "Build App",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 6,
+          "started_at": "2026-09-28T21:31:53Z",
+          "completed_at": "2026-09-28T21:32:16Z"
+        },
+        {
+          "name": "Create Payload and IPA",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-09-28T21:32:16Z",
+          "completed_at": "2026-09-28T21:32:16Z"
+        },
+        {
+          "name": "Upload IPA",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-09-28T21:32:16Z",
+          "completed_at": "2026-09-28T21:32:16Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-09-28T21:32:16Z",
+          "completed_at": "2026-09-28T21:32:16Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-09-28T21:32:16Z",
+          "completed_at": "2026-09-28T21:32:17Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/check-runs/109145165628",
+      "labels": [
+        "macos-14"
+      ],
+      "runner_id": 1000000017,
+      "runner_name": "GitHub Actions 1000000017",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}
