@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct LibraryView: View {
-    @Query(sort: \\LibraryTrack.addedAt, order: .reverse) private var libraryTracks: [LibraryTrack]
+    @Query(sort: \LibraryTrack.addedAt, order: .reverse) private var libraryTracks: [LibraryTrack]
     @StateObject private var audioPlayer = AudioPlayerService.shared
     @State private var selectedSection = "Избранное"
     @State private var history: [Track] = []

@@ -27,7 +27,7 @@ final class ListeningHistory {
     }
 
     func recentTracks(limit: Int = 20) -> [Track] {
-        Array(load().prefix(limit).map(.track))
+        Array(load().prefix(limit).map { $0.track })
     }
 
     func clear() {
