@@ -29,6 +29,27 @@ struct Track: Identifiable, Hashable, Codable {
         case previewFallback
     }
 
+    enum CodingKeys: String, CodingKey {
+        case id, title, artist, artistID, album, albumID, coverURL, audioURL, duration, genre, releaseDate, isExplicit, source
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        artist = try c.decode(String.self, forKey: .artist)
+        artistID = try c.decodeIfPresent(Int.self, forKey: .artistID)
+        album = try c.decodeIfPresent(String.self, forKey: .album)
+        albumID = try c.decodeIfPresent(Int.self, forKey: .albumID)
+        coverURL = try c.decodeIfPresent(URL.self, forKey: .coverURL)
+        audioURL = try c.decodeIfPresent(URL.self, forKey: .audioURL)
+        duration = try c.decode(Double.self, forKey: .duration)
+        genre = try c.decodeIfPresent(String.self, forKey: .genre)
+        releaseDate = try c.decodeIfPresent(Date.self, forKey: .releaseDate)
+        isExplicit = try c.decodeIfPresent(Bool.self, forKey: .isExplicit) ?? false
+        source = try c.decodeIfPresent(TrackSource.self, forKey: .source) ?? .appleMusicCatalog
+    }
+
     init(
         id: String,
         title: String,
