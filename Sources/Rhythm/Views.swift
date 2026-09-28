@@ -310,31 +310,21 @@ struct SearchView: View {
     }
 
     private func search(_ value: String) async {
-        let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard value.count >= 2 else { return }
-        task?.cancel()
-        loading = true
-        hasSearched = false
-        error = nil
-        task = Task {
-            try? await Task.sleep(nanoseconds: 180_000_000)
+        do {
+            let result = try await MusicCatalog.shared.search(value)
             guard !Task.isCancelled else { return }
-            do {
-                let result = try await MusicCatalog.shared.search(value)
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    tracks = result.tracks
-                    artists = result.artists
-                    loading = false
-                    hasSearched = true
-                }
-            } catch {
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    loading = false
-                    hasSearched = true
-                    self.error = error.localizedDescription
-                }
+            await MainActor.run {
+                tracks = result.tracks
+                artists = result.artists
+                loading = false
+                hasSearched = true
+            }
+        } catch {
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                loading = false
+                hasSearched = true
+                self.error = error.localizedDescription
             }
         }
     }
