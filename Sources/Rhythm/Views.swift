@@ -270,10 +270,46 @@ struct SearchView: View {
         .background(RhythmTheme.background)
         .navigationTitle("Поиск")
         .navigationBarTitleDisplayMode(.large)
+        .onChange(of: query) { _, _ in
+            scheduleSearch()
+        }
         .onDisappear { task?.cancel() }
     }
 
+    private func scheduleSearch() {
+        task?.cancel()
+        let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.count < 2 {
+            loading = false
+            hasSearched = false
+            tracks = []
+            artists = []
+            error = nil
+            return
+        }
+        loading = true
+        hasSearched = false
+        error = nil
+        task = Task {
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            await search(value)
+        }
+    }
+
     private func performSearch() {
+        let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value.count >= 2 else { return }
+        task?.cancel()
+        loading = true
+        hasSearched = false
+        error = nil
+        task = Task {
+            await search(value)
+        }
+    }
+
+    private func search(_ value: String) async {
         let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard value.count >= 2 else { return }
         task?.cancel()
