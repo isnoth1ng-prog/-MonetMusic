@@ -290,7 +290,7 @@ final class MusicCatalog {
         }
 
         guard let value = try? JSONDecoder().decode(LRC.self, from: data),
-              !value.instrumental.unwrap(or: false),
+              value.instrumental != true,
               lyricMetadataMatches(value.trackName, track.artist, value.artistName, track.title),
               lyricDurationMatches(value.duration, track.duration) else { return [] }
 
