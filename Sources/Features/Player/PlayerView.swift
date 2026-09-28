@@ -9,6 +9,7 @@ struct PlayerView: View {
     @Query private var libraryTracks: [LibraryTrack]
     
     @State private var showingLyrics = false
+    @State private var coverImage: UIImage? = nil
     
     private var currentTrack: Track? {
         audioPlayer.currentTrack
@@ -20,174 +21,200 @@ struct PlayerView: View {
     }
     
     var body: some View {
-        ZStack {
-            // Ambient Background
-            if let track = currentTrack {
-                AsyncImage(url: track.highResCoverURL) { image in
-                    image
+        GeometryReader { geo in
+            ZStack {
+                // Background — fixed size, clipped, never pushes layout
+                if let img = coverImage {
+                    Image(uiImage: img)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .blur(radius: 60)
-                        .overlay(Color.black.opacity(0.5))
-                } placeholder: {
-                    Color.monetBackground
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .ignoresSafeArea()
-            } else {
-                Color.monetBackground.ignoresSafeArea()
-            }
-            
-            VStack {
-                // Header
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 24))
-                            .foregroundColor(.white)
-                            .padding()
-                    }
-                    Spacer()
-                    Text("Сейчас играет")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                    Spacer()
-                    Button(action: {}) {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 24))
-                            .foregroundColor(.white)
-                            .padding()
-                    }
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                        .blur(radius: 50)
+                        .overlay(Color.black.opacity(0.55))
+                        .ignoresSafeArea()
+                } else {
+                    Color.monetBackground.ignoresSafeArea()
                 }
                 
-                Spacer()
-                
-                if let track = currentTrack {
-                    // Cover Art
-                    AsyncCoverImage(url: track.highResCoverURL, cornerRadius: 20, size: UIScreen.main.bounds.width - 64)
-                        .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
-                        .padding(.bottom, 40)
-                    
-                    // Track Info
+                // Content
+                VStack(spacing: 0) {
+                    // Header
                     HStack {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(track.title)
-                                .font(.system(size: 24, weight: .bold))
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
-                                .lineLimit(1)
-                            
-                            Text(track.artist)
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.white.opacity(0.7))
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        Spacer()
-                        
-                        Button(action: toggleLike) {
-                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                                .font(.system(size: 24))
-                                .foregroundColor(isLiked ? MonetTheme.accent : .white)
-                        }
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 30)
-                    
-                    // Progress
-                    VStack(spacing: 8) {
-                        Slider(value: Binding(
-                            get: { audioPlayer.progress },
-                            set: { newValue in audioPlayer.seek(to: newValue) }
-                        ), in: 0...1)
-                        .accentColor(.white)
-                        
-                        HStack {
-                            Text(formatTime(seconds: audioPlayer.progress * audioPlayer.duration))
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.6))
-                            Spacer()
-                            Text(formatTime(seconds: audioPlayer.duration))
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.6))
-                        }
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 40)
-                    
-                    // Controls
-                    HStack(spacing: 40) {
-                        Button(action: { audioPlayer.playPrevious() }) {
-                            Image(systemName: "backward.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(.white)
-                        }
-                        
-                        Button(action: { audioPlayer.togglePlayPause() }) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 72, height: 72)
-                                
-                                Image(systemName: audioPlayer.isPlaying ? "pause.fill" : "play.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(.black)
-                            }
-                        }
-                        
-                        Button(action: { audioPlayer.playNext() }) {
-                            Image(systemName: "forward.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    // Bottom Controls
-                    HStack {
-                        Button(action: { showingLyrics.toggle() }) {
-                            Image(systemName: "quote.bubble")
-                                .font(.system(size: 22))
-                                .foregroundColor(showingLyrics ? MonetTheme.accent : .white.opacity(0.7))
+                                .frame(width: 44, height: 44)
                         }
                         Spacer()
+                        Text("Сейчас играет")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.7))
+                            .textCase(.uppercase)
+                            .tracking(1)
+                        Spacer()
+                        // Placeholder for symmetry
+                        Color.clear.frame(width: 44, height: 44)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 8)
+                    
+                    Spacer(minLength: 16)
+                    
+                    if let track = currentTrack {
+                        let coverSize = min(geo.size.width - 64, geo.size.height * 0.38)
                         
-                        // Track Radio Button
-                        Button(action: {
-                            Task {
-                                let service = ITunesMusicService()
-                                if let tracks = try? await service.getRecommendations(seedTracks: [track]) {
-                                    await MainActor.run {
-                                        audioPlayer.queue = tracks
-                                    }
+                        // Cover Art — fixed square
+                        AsyncImage(url: track.highResCoverURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            case .failure:
+                                ZStack {
+                                    Color.monetSurface
+                                    Image(systemName: "music.note")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.monetSecondary)
+                                }
+                            default:
+                                ZStack {
+                                    Color.monetSurface
+                                    ProgressView().tint(.white)
                                 }
                             }
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: "waveform.and.magnifyingglass")
-                                    .font(.system(size: 22))
-                                Text("По треку")
-                                    .font(.system(size: 10))
-                            }
-                            .foregroundColor(.white.opacity(0.7))
                         }
+                        .frame(width: coverSize, height: coverSize)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: .black.opacity(0.5), radius: 30, y: 15)
                         
-                        Spacer()
-                        Button(action: {}) {
-                            Image(systemName: "list.bullet")
-                                .font(.system(size: 22))
-                                .foregroundColor(.white.opacity(0.7))
+                        Spacer(minLength: 24)
+                        
+                        // Track Info
+                        HStack(alignment: .center) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(track.title)
+                                    .font(.system(size: 22, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .lineLimit(1)
+                                
+                                Text(track.artist)
+                                    .font(.system(size: 17))
+                                    .foregroundColor(.white.opacity(0.65))
+                                    .lineLimit(1)
+                            }
+                            
+                            Spacer(minLength: 16)
+                            
+                            Button(action: toggleLike) {
+                                Image(systemName: isLiked ? "heart.fill" : "heart")
+                                    .font(.system(size: 22))
+                                    .foregroundColor(isLiked ? MonetTheme.accent : .white.opacity(0.7))
+                                    .frame(width: 44, height: 44)
+                            }
                         }
+                        .padding(.horizontal, 32)
+                        
+                        // Progress Slider
+                        VStack(spacing: 6) {
+                            Slider(value: Binding(
+                                get: { audioPlayer.progress },
+                                set: { audioPlayer.seek(to: $0) }
+                            ), in: 0...1)
+                            .accentColor(.white)
+                            
+                            HStack {
+                                Text(formatTime(seconds: audioPlayer.progress * audioPlayer.duration))
+                                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.5))
+                                Spacer()
+                                Text("-" + formatTime(seconds: max(0, audioPlayer.duration - audioPlayer.progress * audioPlayer.duration)))
+                                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                        }
+                        .padding(.horizontal, 32)
+                        .padding(.top, 20)
+                        
+                        // Playback Controls
+                        HStack(spacing: 48) {
+                            Button(action: { audioPlayer.playPrevious() }) {
+                                Image(systemName: "backward.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44)
+                            }
+                            
+                            Button(action: { audioPlayer.togglePlayPause() }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.white)
+                                        .frame(width: 68, height: 68)
+                                    
+                                    Image(systemName: audioPlayer.isPlaying ? "pause.fill" : "play.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundColor(.black)
+                                        .offset(x: audioPlayer.isPlaying ? 0 : 2)
+                                }
+                            }
+                            
+                            Button(action: { audioPlayer.playNext() }) {
+                                Image(systemName: "forward.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44)
+                            }
+                        }
+                        .padding(.top, 24)
+                        
+                        Spacer(minLength: 16)
+                        
+                        // Bottom row — lyrics + queue
+                        HStack {
+                            Button(action: { showingLyrics.toggle() }) {
+                                Image(systemName: "quote.bubble")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(showingLyrics ? MonetTheme.accent : .white.opacity(0.5))
+                                    .frame(width: 44, height: 44)
+                            }
+                            Spacer()
+                            Button(action: {}) {
+                                Image(systemName: "list.bullet")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .frame(width: 44, height: 44)
+                            }
+                        }
+                        .padding(.horizontal, 32)
+                        .padding(.bottom, 24)
                     }
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 30)
                 }
             }
+        }
+        .onChange(of: currentTrack?.id) { _ in
+            loadCoverImage()
+        }
+        .onAppear {
+            loadCoverImage()
         }
         .sheet(isPresented: $showingLyrics) {
             if let track = currentTrack {
                 LyricsView(track: track)
+            }
+        }
+    }
+    
+    private func loadCoverImage() {
+        guard let url = currentTrack?.highResCoverURL else {
+            coverImage = nil
+            return
+        }
+        Task {
+            if let data = try? await URLSession.shared.data(from: url).0,
+               let img = UIImage(data: data) {
+                await MainActor.run { coverImage = img }
             }
         }
     }

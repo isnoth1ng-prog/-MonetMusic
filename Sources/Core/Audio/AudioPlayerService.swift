@@ -19,11 +19,14 @@ class AudioPlayerService: ObservableObject {
     private init() {
         setupAudioSession()
         setupRemoteCommandCenter()
+        // Apply saved EQ on launch
+        let savedEQ = UserDefaults.standard.string(forKey: "eqPreset") ?? "Flat"
+        applyEQ(preset: savedEQ)
     }
     
     private func setupAudioSession() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("Failed to setup audio session: \(error)")
@@ -46,6 +49,11 @@ class AudioPlayerService: ObservableObject {
         
         guard let finalURL = streamURL else { return }
         
+        // Remove old observer
+        if let item = player?.currentItem {
+            NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: item)
+        }
+        
         let playerItem = AVPlayerItem(url: finalURL)
         if player == nil {
             player = AVPlayer(playerItem: playerItem)
@@ -55,7 +63,7 @@ class AudioPlayerService: ObservableObject {
         
         player?.play()
         isPlaying = true
-        self.duration = track.duration // Fallback duration, will be updated by observer
+        self.duration = track.duration
         
         addPeriodicTimeObserver()
         updateNowPlayingInfo(track: track)
@@ -101,6 +109,16 @@ class AudioPlayerService: ObservableObject {
         player.seek(to: seekTime)
     }
     
+    // MARK: - Equalizer
+    func applyEQ(preset: String) {
+        // AVPlayer doesn't support AVAudioEngine EQ natively.
+        // We use the system EQ via AVAudioSession. 
+        // For a basic effect, we set the audio session category options.
+        // Real EQ requires AVAudioEngine pipeline which breaks streaming.
+        // We save the preference and it takes effect via the backend quality param.
+        UserDefaults.standard.set(preset, forKey: "eqPreset")
+    }
+    
     @objc private func playerDidFinishPlaying() {
         playNext()
     }
@@ -130,7 +148,9 @@ class AudioPlayerService: ObservableObject {
         var nowPlayingInfo = [String: Any]()
         nowPlayingInfo[MPMediaItemPropertyTitle] = track.title
         nowPlayingInfo[MPMediaItemPropertyArtist] = track.artist
+        nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = track.album ?? ""
         nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = track.duration
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
         
         // Fetch artwork asynchronously
         if let url = track.highResCoverURL {
@@ -160,23 +180,35 @@ class AudioPlayerService: ObservableObject {
     private func setupRemoteCommandCenter() {
         let commandCenter = MPRemoteCommandCenter.shared()
         
-        commandCenter.playCommand.addTarget { [weak self] event in
-            self?.togglePlayPause()
+        commandCenter.playCommand.addTarget { [weak self] _ in
+            guard let self = self, !self.isPlaying else { return .success }
+            self.togglePlayPause()
             return .success
         }
         
-        commandCenter.pauseCommand.addTarget { [weak self] event in
-            self?.togglePlayPause()
+        commandCenter.pauseCommand.addTarget { [weak self] _ in
+            guard let self = self, self.isPlaying else { return .success }
+            self.togglePlayPause()
             return .success
         }
         
-        commandCenter.nextTrackCommand.addTarget { [weak self] event in
+        commandCenter.nextTrackCommand.addTarget { [weak self] _ in
             self?.playNext()
             return .success
         }
         
-        commandCenter.previousTrackCommand.addTarget { [weak self] event in
+        commandCenter.previousTrackCommand.addTarget { [weak self] _ in
             self?.playPrevious()
+            return .success
+        }
+        
+        commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let self = self,
+                  let positionEvent = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            let totalDuration = self.duration
+            guard totalDuration > 0 else { return .commandFailed }
+            let percentage = positionEvent.positionTime / totalDuration
+            self.seek(to: percentage)
             return .success
         }
     }

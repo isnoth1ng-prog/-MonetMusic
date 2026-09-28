@@ -61,10 +61,10 @@ struct HomeView: View {
         guard recentTracks.isEmpty else { return }
         
         Task {
-            if let pop = try? await musicService.search(query: "Top hits") {
+            if let pop = try? await musicService.search(query: "русский рэп хиты") {
                 await MainActor.run { self.recentTracks = pop }
             }
-            if let fresh = try? await musicService.search(query: "New release") {
+            if let fresh = try? await musicService.search(query: "новинки музыки русские") {
                 await MainActor.run { self.recommendedTracks = fresh }
             }
         }
