@@ -511,7 +511,6 @@ struct MiniPlayerView: View {
                 }
             }
             .padding(8).padding(.trailing, 4).rhythmGlass(17)
-        }
         .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
         .onTapGesture(perform: open)
         .padding(.horizontal, 10)
