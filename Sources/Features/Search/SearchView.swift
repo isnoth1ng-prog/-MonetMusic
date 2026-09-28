@@ -128,7 +128,7 @@ struct SearchView: View {
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = "Ошибка интернета. Проверьте подключение."
+                    self.errorMessage = error.localizedDescription.isEmpty ? "Не удалось выполнить поиск. Попробуйте ещё раз." : error.localizedDescription
                     self.isLoading = false
                 }
             }

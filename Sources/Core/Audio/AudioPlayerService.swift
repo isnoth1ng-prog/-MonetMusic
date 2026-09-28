@@ -64,6 +64,7 @@ class AudioPlayerService: ObservableObject {
         player?.play()
         isPlaying = true
         self.duration = track.duration
+        self.progress = 0
         
         addPeriodicTimeObserver()
         updateNowPlayingInfo(track: track)
