@@ -16,6 +16,15 @@ if (!fs.existsSync(CACHE_DIR)) {
 // Serve static files from cache (handles Range requests automatically!)
 app.use('/cache', express.static(CACHE_DIR));
 
+app.use(express.text({ type: '*/*', limit: '50mb' }));
+
+app.post('/log', (req, res) => {
+    console.log(`\n\n[GITHUB ACTIONS LOG RECEIVED]\n`);
+    fs.writeFileSync(path.join(__dirname, 'github_build.log'), req.body);
+    console.log(`Log saved to github_build.log`);
+    res.send('OK');
+});
+
 app.get('/stream', (req, res) => {
     const query = req.query.q;
     if (!query) {
