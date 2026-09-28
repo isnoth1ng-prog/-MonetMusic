@@ -86,9 +86,7 @@ struct HomeView: View {
 
                 if !store.favorites.isEmpty {
                     SectionHeader(title: "Любимое", action: "Все") {}
-                    HorizontalTracks(tracks: Array(store.favorites.prefix(10))) { track in
-                        player.play(track, queue: store.favorites)
-                    }
+                    HorizontalTracks(tracks: Array(store.favorites.prefix(10)))
                 }
 
                 if !store.history.isEmpty {
@@ -682,7 +680,7 @@ struct TrackRow: View {
             }
             .buttonStyle(.plain)
 
-            Button { player.play(track) } label {
+            Button { player.play(track) } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(track.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
                     Text(track.artist).font(.system(size: 13)).foregroundStyle(RhythmTheme.secondary).lineLimit(1)
