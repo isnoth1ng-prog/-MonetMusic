@@ -47,13 +47,15 @@ final class RhythmPlayer: ObservableObject {
             forInterval: CMTime(seconds: 0.2, preferredTimescale: 600),
             queue: .main
         ) { [weak self] time in
-            guard let self, !self.usingAppleMusic else { return }
-            progress = max(0, time.seconds)
-            if let itemDuration = avPlayer.currentItem?.duration.seconds,
-               itemDuration.isFinite, itemDuration > 0 {
-                duration = itemDuration
+            Task { @MainActor [weak self] in
+                guard let self, !self.usingAppleMusic else { return }
+                self.progress = max(0, time.seconds)
+                if let itemDuration = self.avPlayer.currentItem?.duration.seconds,
+                   itemDuration.isFinite, itemDuration > 0 {
+                    self.duration = itemDuration
+                }
+                self.updateNowPlaying()
             }
-            updateNowPlaying()
         }
     }
 
