@@ -6,31 +6,55 @@ struct RootView: View {
     @State private var selected = 0
     @State private var showPlayer = false
 
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            TabView(selection: $selected) {
-                NavigationStack { HomeView().navigationBarHidden(true) }
-                    .tabItem { Label("Главная", systemImage: "house.fill") }.tag(0)
-                NavigationStack { SearchView() }
-                    .tabItem { Label("Поиск", systemImage: "magnifyingglass") }.tag(1)
-                NavigationStack { FavoritesView() }
-                    .tabItem { Label("Любимое", systemImage: "heart.fill") }.tag(2)
-                NavigationStack { SettingsView() }
-                    .tabItem { Label("Настройки", systemImage: "slider.horizontal.3") }.tag(3)
-            }
-            .tint(RhythmTheme.accent)
+    private let tabs: [(String, String)] = [
+        ("Главная", "house"), ("Поиск", "magnifyingglass"),
+        ("Любимое", "heart"), ("Настройки", "slider.horizontal.3")
+    ]
 
-            if player.currentTrack != nil {
-                MiniPlayerView {
-                    showPlayer = true
+    var body: some View {
+        TabView(selection: $selected) {
+            NavigationStack { HomeView().toolbar(.hidden, for: .navigationBar) }.tag(0)
+            NavigationStack { SearchView() }.tag(1)
+            NavigationStack { FavoritesView() }.tag(2)
+            NavigationStack { SettingsView() }.tag(3)
+        }
+        .toolbar(.hidden, for: .tabBar)
+        .tint(RhythmTheme.accent)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 8) {
+                if player.currentTrack != nil {
+                    MiniPlayerView { showPlayer = true }
                 }
-                .padding(.bottom, 49)
+                HStack(spacing: 4) {
+                    ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
+                        Button { selected = index } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: selected == index ? tab.1 + ".fill" : tab.1)
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text(tab.0).font(.system(size: 10, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .foregroundStyle(selected == index ? .white : RhythmTheme.secondary)
+                            .padding(.vertical, 7)
+                            .background {
+                                if selected == index { Capsule().fill(.white.opacity(0.075)) }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(5)
+                .rhythmGlass(22)
             }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .background(RhythmTheme.background.opacity(0.96))
         }
         .sheet(isPresented: $showPlayer) {
             FullPlayerView()
                 .environmentObject(player)
                 .presentationDetents([.large])
+                .presentationCornerRadius(34)
                 .presentationDragIndicator(.visible)
         }
         .environmentObject(player)
@@ -38,7 +62,6 @@ struct RootView: View {
         .preferredColorScheme(.dark)
     }
 }
-
 struct HomeView: View {
     @EnvironmentObject private var store: ListeningStore
     @EnvironmentObject private var player: RhythmPlayer
@@ -139,64 +162,94 @@ struct WaveView: View {
     @State private var tracks: [Track] = []
 
     var body: some View {
-        ZStack {
-            RhythmTheme.background.ignoresSafeArea()
-            VStack(spacing: 28) {
-                Spacer()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 22) {
                 ZStack {
-                    Circle().fill(RhythmTheme.accent.opacity(0.12)).frame(width: 260, height: 260)
-                    Circle().fill(.ultraThinMaterial).frame(width: 210, height: 210)
-                    Circle().stroke(RhythmTheme.accent.opacity(0.55), lineWidth: 1).frame(width: 210, height: 210)
-                    Image(systemName: "waveform").font(.system(size: 58, weight: .bold)).foregroundStyle(RhythmTheme.accent)
+                    RoundedRectangle(cornerRadius: 30, style: .continuous).fill(RhythmTheme.surface)
+                    if let url = (player.currentTrack ?? seed)?.highResCoverURL {
+                        AsyncImage(url: url) { phase in
+                            if case .success(let image) = phase {
+                                image.resizable().scaledToFill().blur(radius: 38).opacity(0.28)
+                            }
+                        }
+                    }
+                    LinearGradient(colors: [.clear, RhythmTheme.background.opacity(0.9)],
+                                   startPoint: .top, endPoint: .bottom)
+                    VStack(spacing: 18) {
+                        ZStack {
+                            Circle().fill(.white.opacity(0.07)).frame(width: 142, height: 142)
+                            WaveMark()
+                                .stroke(RhythmTheme.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                .frame(width: 104, height: 68)
+                        }
+                        Text("RHYTHM").font(.system(size: 11, weight: .bold))
+                            .tracking(3).foregroundStyle(.white.opacity(0.52))
+                    }
                 }
+                .frame(height: 330)
+                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+
                 VStack(spacing: 9) {
                     Text(seed == nil ? "Моя волна" : "Моя волна по треку")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                    Text(seed == nil ? "Никакой очереди. Только следующий трек, который Rhythm выбрал для тебя." : "Поток, собранный вокруг «\(seed?.title ?? "")».")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .tracking(-0.8)
+                    Text(seed == nil
+                         ? "Без очереди. Rhythm выбирает следующий трек на лету."
+                         : "Поток, собранный вокруг «\(seed?.title ?? "трек")».")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(RhythmTheme.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 28)
+                        .padding(.horizontal, 30)
                 }
-                Button {
-                    start()
-                } label: {
-                    HStack(spacing: 10) {
+
+                Button { start() } label: {
+                    HStack(spacing: 9) {
                         if loading { ProgressView().tint(.black) }
                         else { Image(systemName: started ? "arrow.clockwise" : "play.fill") }
-                        Text(started ? "Пересобрать волну" : "Слушать")
+                        Text(started ? "Пересобрать волну" : "Слушать волну")
                     }
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.black)
-                    .padding(.horizontal, 28).padding(.vertical, 16)
+                    .frame(maxWidth: .infinity).padding(.vertical, 17)
                     .background(.white, in: Capsule())
                 }
                 .disabled(loading)
-                Spacer()
-                if let current = player.currentTrack {
+
+                if started, !tracks.isEmpty {
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            Text("Поток готов").sectionTitle()
+                            Spacer()
+                            Text("\(tracks.count) треков")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(RhythmTheme.secondary)
+                        }
+                        Text("Следующий трек выбирается автоматически. Очередь здесь не показывается.")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(RhythmTheme.secondary)
+                    }
+                    .padding(18).rhythmGlass(22)
+                }
+
+                if let seed {
                     HStack(spacing: 12) {
-                        CoverView(url: current.highResCoverURL, size: 50, radius: 13)
+                        CoverView(url: seed.highResCoverURL, size: 50, radius: 12)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Сейчас играет").font(.system(size: 11, weight: .semibold)).foregroundStyle(RhythmTheme.secondary)
-                            Text(current.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                            Text(current.artist).font(.system(size: 12)).foregroundStyle(RhythmTheme.secondary)
+                            Text("ИСТОЧНИК ВОЛНЫ").font(.system(size: 10, weight: .bold))
+                                .tracking(1.2).foregroundStyle(RhythmTheme.accent)
+                            Text(seed.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                            Text(seed.artist).font(.system(size: 12)).foregroundStyle(RhythmTheme.secondary)
                         }
                         Spacer()
-                        Button { player.toggle() } label: {
-                            Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").foregroundStyle(.white)
-                        }
                     }
-                    .padding(12).rhythmGlass(18).padding(.horizontal, 18)
+                    .padding(12).rhythmGlass(18)
                 }
-                Spacer(minLength: 12)
             }
+            .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 24)
         }
+        .background(RhythmTheme.background)
+        .navigationTitle("Моя волна")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("МОЯ ВОЛНА").font(.system(size: 12, weight: .bold)).tracking(2)
-            }
-        }
     }
 
     private func start() {
@@ -206,13 +259,27 @@ struct WaveView: View {
             await MainActor.run {
                 tracks = result
                 loading = false
-                started = true
+                started = !result.isEmpty
                 player.startWave(result)
             }
         }
     }
 }
 
+struct WaveMark: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let bars = [0.28, 0.56, 0.92, 0.48, 0.74, 0.38, 0.66]
+        let gap = rect.width / CGFloat(bars.count * 2)
+        for (i, value) in bars.enumerated() {
+            let x = gap + CGFloat(i * 2) * gap
+            let h = rect.height * value
+            p.move(to: CGPoint(x: x, y: rect.midY - h / 2))
+            p.addLine(to: CGPoint(x: x, y: rect.midY + h / 2))
+        }
+        return p
+    }
+}
 struct SearchView: View {
     @EnvironmentObject private var player: RhythmPlayer
     @State private var query = ""
@@ -498,106 +565,154 @@ struct SettingsView: View {
 struct MiniPlayerView: View {
     @EnvironmentObject private var player: RhythmPlayer
     let open: () -> Void
+
     var body: some View {
         HStack(spacing: 10) {
-                CoverView(url: player.currentTrack?.highResCoverURL, size: 46, radius: 12)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(player.currentTrack?.title ?? "").font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                    Text(player.currentTrack?.artist ?? "").font(.system(size: 12)).foregroundStyle(RhythmTheme.secondary).lineLimit(1)
+            Button(action: open) {
+                HStack(spacing: 11) {
+                    CoverView(url: player.currentTrack?.highResCoverURL, size: 48, radius: 13)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(player.currentTrack?.title ?? "")
+                            .font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                        Text(player.currentTrack?.artist ?? "")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(RhythmTheme.secondary).lineLimit(1)
+                    }
                 }
-                Spacer()
-                Button { player.toggle() } label: {
-                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 38, height: 38)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(8).padding(.trailing, 4).rhythmGlass(17)
-        .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
-        .onTapGesture(perform: open)
-        .padding(.horizontal, 10)
+            .buttonStyle(.plain)
+
+            Button { player.toggle() } label: {
+                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .frame(width: 40, height: 40)
+                    .background(.white, in: Circle())
+                    .foregroundStyle(.black)
+            }
+        }
+        .padding(7).padding(.leading, 4)
+        .rhythmGlass(19)
     }
 }
-
 struct FullPlayerView: View {
     @EnvironmentObject private var player: RhythmPlayer
     @Environment(\.dismiss) private var dismiss
+    @State private var showLyrics = false
 
     var body: some View {
-        ZStack {
-            AdaptivePlayerBackground(url: player.currentTrack?.highResCoverURL)
-            VStack(spacing: 0) {
-                HStack {
-                    Button { dismiss() } label: { Image(systemName: "chevron.down").font(.system(size: 18, weight: .bold)) }
-                    Spacer()
-                    Text("СЕЙЧАС ИГРАЕТ").font(.system(size: 11, weight: .bold)).tracking(2).foregroundStyle(.white.opacity(0.55))
-                    Spacer()
-                    Menu {
-                        if let track = player.currentTrack {
-                            NavigationLink("Моя волна по треку") { WaveView(seed: track) }
+        GeometryReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.down").font(.system(size: 17, weight: .bold))
+                                .frame(width: 38, height: 38).background(.white.opacity(0.08), in: Circle())
                         }
-                        Button("Повтор") { player.cycleRepeat() }
-                    } label: {
-                        Image(systemName: "ellipsis").frame(width: 30, height: 30)
+                        Spacer()
+                        VStack(spacing: 2) {
+                            Text("СЕЙЧАС ИГРАЕТ").font(.system(size: 10, weight: .bold))
+                                .tracking(2.2).foregroundStyle(.white.opacity(0.5))
+                            if player.usingAppleMusic {
+                                Text("APPLE MUSIC").font(.system(size: 8, weight: .bold))
+                                    .tracking(1.4).foregroundStyle(RhythmTheme.accent)
+                            }
+                        }
+                        Spacer()
+                        Menu {
+                            if let track = player.currentTrack {
+                                NavigationLink("Моя волна по треку") { WaveView(seed: track) }
+                            }
+                            Button("Режим повтора") { player.cycleRepeat() }
+                        } label: {
+                            Image(systemName: "ellipsis").frame(width: 38, height: 38)
+                                .background(.white.opacity(0.08), in: Circle())
+                        }
+                    }
+                    .padding(.horizontal, 20).padding(.top, 8)
+
+                    CoverView(url: player.currentTrack?.highResCoverURL,
+                              size: min(proxy.size.width - 48, 350), radius: 28)
+                        .shadow(color: RhythmTheme.accent.opacity(0.14), radius: 35, y: 18)
+                        .padding(.top, 20)
+
+                    HStack(alignment: .center, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(player.currentTrack?.title ?? "")
+                                .font(.system(size: 25, weight: .bold, design: .rounded))
+                                .tracking(-0.4).lineLimit(2)
+                            Text(player.currentTrack?.artist ?? "")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.55)).lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        Button { player.toggleLike() } label: {
+                            Image(systemName: (player.currentTrack.map { player.isLiked($0) } ?? false) ? "heart.fill" : "heart")
+                                .font(.system(size: 23, weight: .semibold))
+                                .foregroundStyle((player.currentTrack.map { player.isLiked($0) } ?? false) ? RhythmTheme.accent : .white)
+                                .frame(width: 44, height: 44).background(.white.opacity(0.07), in: Circle())
+                        }
+                    }
+                    .padding(.horizontal, 22).padding(.top, 24)
+
+                    Slider(value: Binding(get: { player.progress }, set: { player.seek($0) }),
+                           in: 0...max(player.duration, 1))
+                        .tint(RhythmTheme.accent)
+                        .padding(.horizontal, 19).padding(.top, 14)
+                    HStack {
+                        Text(time(player.progress)); Spacer()
+                        Text("-" + time(max(0, player.duration - player.progress)))
+                    }
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.42)).padding(.horizontal, 21)
+
+                    HStack(spacing: 34) {
+                        Button { player.shuffle.toggle() } label: {
+                            Image(systemName: "shuffle").foregroundStyle(player.shuffle ? RhythmTheme.accent : .white.opacity(0.55))
+                        }
+                        Button { player.previous() } label: { Image(systemName: "backward.fill") }
+                        Button { player.toggle() } label: {
+                            Circle().fill(.white).frame(width: 72, height: 72)
+                                .overlay(Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                    .foregroundStyle(.black).font(.system(size: 25, weight: .bold)))
+                        }
+                        Button { player.next() } label: { Image(systemName: "forward.fill") }
+                        Button { player.cycleRepeat() } label: {
+                            Image(systemName: player.repeatMode.icon)
+                                .foregroundStyle(player.repeatMode == .off ? .white.opacity(0.55) : RhythmTheme.accent)
+                        }
+                    }
+                    .font(.system(size: 19, weight: .semibold)).padding(.top, 22)
+
+                    Button { showLyrics = true } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "quote.opening")
+                            Text(player.lyrics.isEmpty ? "Текст недоступен" : "Открыть текст")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold))
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(player.lyrics.isEmpty ? RhythmTheme.secondary : .white)
+                        .padding(15).rhythmGlass(17)
+                    }
+                    .disabled(player.lyrics.isEmpty)
+                    .padding(.horizontal, 18).padding(.top, 22).padding(.bottom, 24)
+
+                    if let error = player.streamError {
+                        Text(error).font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.38))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 28).padding(.bottom, 12)
                     }
                 }
-                .padding(.horizontal, 20).padding(.top, 8)
-
-                if player.lyrics.isEmpty {
-                    Spacer()
-                    CoverView(url: player.currentTrack?.highResCoverURL, size: 260, radius: 28)
-                    Spacer()
-                } else {
-                    LyricsFlowView(lines: player.lyrics, progress: player.progress)
-                        .frame(maxHeight: 340)
-                        .padding(.top, 18)
-                    Spacer(minLength: 8)
-                }
-
-                HStack(alignment: .bottom) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(player.currentTrack?.title ?? "").font(.system(size: 24, weight: .bold, design: .rounded)).lineLimit(2)
-                        Text(player.currentTrack?.artist ?? "").font(.system(size: 16)).foregroundStyle(.white.opacity(0.58))
-                    }
-                    Spacer()
-                    Button { player.toggleLike() } label: {
-                        Image(systemName: (player.currentTrack.map { player.isLiked($0) } ?? false) ? "heart.fill" : "heart")
-                            .font(.system(size: 25, weight: .semibold))
-                            .foregroundStyle((player.currentTrack.map { player.isLiked($0) } ?? false) ? RhythmTheme.accent : .white)
-                    }
-                }
-                .padding(.horizontal, 22)
-
-                Slider(value: Binding(get: { player.progress }, set: { player.seek($0) }), in: 0...max(player.duration, 1))
-                    .tint(RhythmTheme.accent)
-                    .padding(.horizontal, 18).padding(.top, 14)
-
-                HStack {
-                    Text(time(player.progress))
-                    Spacer()
-                    Text("-" + time(max(0, player.duration - player.progress)))
-                }
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.48))
-                .padding(.horizontal, 20)
-
-                HStack(spacing: 32) {
-                    Button { player.shuffle.toggle() } label: {
-                        Image(systemName: "shuffle").foregroundStyle(player.shuffle ? RhythmTheme.accent : .white.opacity(0.55))
-                    }
-                    Button { player.previous() } label: { Image(systemName: "backward.fill") }
-                    Button { player.toggle() } label: {
-                        Circle().fill(.white).frame(width: 70, height: 70)
-                            .overlay(Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").foregroundStyle(.black).font(.system(size: 25, weight: .bold)))
-                    }
-                    Button { player.next() } label: { Image(systemName: "forward.fill") }
-                    Button { player.cycleRepeat() } label: {
-                        Image(systemName: player.repeatMode.icon).foregroundStyle(player.repeatMode == .off ? .white.opacity(0.55) : RhythmTheme.accent)
-                    }
-                }
-                .font(.system(size: 20, weight: .semibold))
-                .padding(.top, 18).padding(.bottom, 28)
             }
         }
+        .background(AdaptivePlayerBackground(url: player.currentTrack?.highResCoverURL))
         .foregroundStyle(.white)
+        .sheet(isPresented: $showLyrics) {
+            LyricsSheet().environmentObject(player)
+                .presentationDetents([.large]).presentationCornerRadius(34)
+        }
     }
 
     private func time(_ value: Double) -> String {
@@ -606,6 +721,29 @@ struct FullPlayerView: View {
     }
 }
 
+struct LyricsSheet: View {
+    @EnvironmentObject private var player: RhythmPlayer
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            RhythmTheme.background.ignoresSafeArea()
+            VStack(spacing: 0) {
+                HStack {
+                    Text("ТЕКСТ").font(.system(size: 11, weight: .bold)).tracking(2.2)
+                        .foregroundStyle(.white.opacity(0.5))
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").frame(width: 34, height: 34)
+                            .background(.white.opacity(0.08), in: Circle())
+                    }
+                }
+                .padding(.horizontal, 20).padding(.top, 12)
+                LyricsFlowView(lines: player.lyrics, progress: player.progress)
+            }
+        }
+    }
+}
 struct LyricsFlowView: View {
     let lines: [LyricLine]
     let progress: Double
