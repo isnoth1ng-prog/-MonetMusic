@@ -106,7 +106,9 @@ final class RhythmPlayer: ObservableObject {
     }
 
     private func playOnPhone(_ track: Track) async {
-        if await AppleMusicService.shared.requestAuthorization() {
+        // Never use iTunes 30-second previews as playback.
+        // Apple Music is attempted only for catalog tracks; Audius is the full-stream fallback.
+        if track.source != .audius, await AppleMusicService.shared.requestAuthorization() {
             do {
                 let song = try await AppleMusicService.shared.resolveSong(for: track)
                 applePlayer.queue = [song]
@@ -119,25 +121,37 @@ final class RhythmPlayer: ObservableObject {
                 return
             } catch {
                 usingAppleMusic = false
-                streamError = "Apple Music не смог запустить полный трек. Доступен резервный предпросмотр."
             }
         }
 
         usingAppleMusic = false
-        guard let url = track.audioURL else {
-            isPlaying = false
-            streamError = "Полный поток для этого трека недоступен."
+
+        if let audius = await AudiusService.shared.resolve(track),
+           let url = AudiusService.shared.streamURL(for: audius.id) {
+            await playAV(url: url, fallbackDuration: Double(audius.duration ?? 0), track: track)
             return
         }
 
+        // A Track may already be an Audius stream. This is a full stream, not a preview.
+        if track.source == .audius, let url = track.audioURL {
+            await playAV(url: url, fallbackDuration: track.duration, track: track)
+            return
+        }
+
+        isPlaying = false
+        streamError = "Полный поток для этого трека не найден. 30-секундные превью Rhythm не воспроизводит."
+    }
+
+    private func playAV(url: URL, fallbackDuration: Double, track: Track) async {
         avPlayer.replaceCurrentItem(with: AVPlayerItem(url: url))
         avPlayer.play()
         isPlaying = true
+        streamError = nil
 
         let captured = track
         if let item = avPlayer.currentItem {
             let value = try? await item.asset.load(.duration)
-            let seconds = value?.seconds ?? 0
+            let seconds = value?.seconds ?? fallbackDuration
             if seconds.isFinite, seconds > 0, currentTrack?.id == captured.id {
                 duration = seconds
             }
