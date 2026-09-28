@@ -64,8 +64,8 @@ final class MusicCatalog {
             }
         }
 
-        let uniqueTracks = Dictionary(grouping: tracks, by: \ .id).compactMap { $0.value.first }
-        let uniqueArtists = Dictionary(grouping: artists, by: \ .id).compactMap { $0.value.first }
+        let uniqueTracks = Dictionary(grouping: tracks, by: \.id).compactMap { $0.value.first }
+        let uniqueArtists = Dictionary(grouping: artists, by: \.id).compactMap { $0.value.first }
         return (Array(uniqueTracks.prefix(60)), Array(uniqueArtists.prefix(15)))
     }
 
