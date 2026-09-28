@@ -585,7 +585,7 @@ struct ArtistView: View {
                                         Text(album.title)
                                             .font(.system(size: 14, weight: .semibold))
                                             .lineLimit(2)
-                                        Text("(album.type.rawValue) · (album.trackCount) треков")
+                                        Text("\(album.type.rawValue) · \(album.trackCount) треков")
                                             .font(.system(size: 11, weight: .medium))
                                             .foregroundStyle(RhythmTheme.secondary)
                                     }
@@ -614,7 +614,7 @@ struct ArtistView: View {
     private var artistHeader: some View {
         ZStack(alignment: .bottomLeading) {
             if let imageURL = artist.imageURL ?? tracks.first?.highResCoverURL {
-                AsyncImage(url: imageURL) { phase in
+                AsyncImage(url: imageURL, scale: 1) { phase in
                     if case .success(let image) = phase {
                         image.resizable().scaledToFill()
                     }
