@@ -614,10 +614,8 @@ struct ArtistView: View {
     private var artistHeader: some View {
         ZStack(alignment: .bottomLeading) {
             if let imageURL = artist.imageURL ?? tracks.first?.highResCoverURL {
-                AsyncImage(url: imageURL, scale: 1) { phase in
-                    if case .success(let image) = phase {
-                        image.resizable().scaledToFill()
-                    }
+                AsyncImage(url: imageURL) { image in
+                    image.resizable().scaledToFill()
                 } placeholder: {
                     RhythmTheme.surface
                 }
@@ -1115,7 +1113,7 @@ struct FullPlayerView: View {
 
 struct LyricsSheet: View {
     @EnvironmentObject private var player: RhythmPlayer
-    @Environment(.dismiss) private var dismiss
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
