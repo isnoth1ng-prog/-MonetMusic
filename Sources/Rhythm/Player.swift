@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
+import MusicKit
 
 @MainActor
 final class RhythmPlayer: ObservableObject {
@@ -11,47 +12,54 @@ final class RhythmPlayer: ObservableObject {
     @Published private(set) var progress = 0.0
     @Published private(set) var duration = 0.0
     @Published private(set) var lyrics: [LyricLine] = []
+    @Published private(set) var usingAppleMusic = false
+    @Published private(set) var streamError: String?
     @Published var repeatMode: RepeatMode = .off
     @Published var shuffle = false
 
-    private let player = AVPlayer()
+    private let avPlayer = AVPlayer()
+    private let applePlayer = ApplicationMusicPlayer.shared
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var queue: [Track] = []
     private var queueIndex = 0
+    private var pollTask: Task<Void, Never>?
 
     private init() {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        let audio = AVAudioSession.sharedInstance()
+        try? audio.setCategory(.playback, mode: .default, options: [])
+        try? audio.setActive(true)
 
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.advance() }
+        ) { [weak self] notification in
+            guard let self, notification.object as? AVPlayerItem === self.avPlayer.currentItem else { return }
+            Task { @MainActor in self.advance() }
         }
 
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.15, preferredTimescale: 600),
+        timeObserver = avPlayer.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 0.2, preferredTimescale: 600),
             queue: .main
         ) { [weak self] time in
-            guard let self else { return }
+            guard let self, !self.usingAppleMusic else { return }
             progress = max(0, time.seconds)
-            if let itemDuration = player.currentItem?.duration.seconds,
+            if let itemDuration = avPlayer.currentItem?.duration.seconds,
                itemDuration.isFinite, itemDuration > 0 {
                 duration = itemDuration
             }
+            updateNowPlaying()
         }
     }
 
     deinit {
-        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        if let timeObserver { avPlayer.removeTimeObserver(timeObserver) }
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        pollTask?.cancel()
     }
 
     func play(_ track: Track, queue: [Track] = []) {
-        guard let url = track.audioURL else { return }
         if !queue.isEmpty {
             self.queue = queue
             self.queueIndex = queue.firstIndex(where: { $0.id == track.id }) ?? 0
@@ -62,30 +70,81 @@ final class RhythmPlayer: ObservableObject {
 
         currentTrack = track
         progress = 0
-        duration = track.duration
+        duration = max(track.duration, 0)
         lyrics = []
-        player.replaceCurrentItem(with: AVPlayerItem(url: url))
-        player.play()
+        streamError = nil
+        ListeningStore.shared.record(track)
+
+        pollTask?.cancel()
+        Task { await playOnPhone(track) }
+
+        Task {
+            let lines = await MusicCatalog.shared.lyrics(for: track)
+            guard currentTrack?.id == track.id else { return }
+            lyrics = lines
+        }
+    }
+
+    private func playOnPhone(_ track: Track) async {
+        if await AppleMusicService.shared.requestAuthorization() {
+            do {
+                let song = try await AppleMusicService.shared.resolveSong(for: track)
+                applePlayer.queue = [song]
+                try await applePlayer.play()
+                usingAppleMusic = true
+                isPlaying = true
+                duration = song.duration ?? max(track.duration, 0)
+                startAppleMusicPolling()
+                updateNowPlaying()
+                return
+            } catch {
+                usingAppleMusic = false
+                streamError = "Apple Music не смог запустить трек. Использую резервный поток."
+            }
+        }
+
+        usingAppleMusic = false
+        guard let url = track.audioURL else {
+            isPlaying = false
+            streamError = "Для этого трека нет доступного потока."
+            return
+        }
+
+        avPlayer.replaceCurrentItem(with: AVPlayerItem(url: url))
+        avPlayer.play()
         isPlaying = true
 
         let captured = track
-        Task {
-            let lines = await MusicCatalog.shared.lyrics(for: captured)
-            guard currentTrack?.id == captured.id else { return }
-            lyrics = lines
-        }
-
-        Task {
-            guard let item = player.currentItem else { return }
+        if let item = avPlayer.currentItem {
             let value = try? await item.asset.load(.duration)
             let seconds = value?.seconds ?? 0
             if seconds.isFinite, seconds > 0, currentTrack?.id == captured.id {
                 duration = seconds
             }
         }
-
-        ListeningStore.shared.record(track)
         updateNowPlaying()
+    }
+
+    private func startAppleMusicPolling() {
+        pollTask?.cancel()
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                let time = applePlayer.playbackTime
+                if time.isFinite {
+                    progress = max(0, time)
+                }
+                let status = applePlayer.state.playbackStatus
+                isPlaying = status == .playing
+                updateNowPlaying()
+
+                if status == .stopped, duration > 0, progress >= duration - 1 {
+                    advance()
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+        }
     }
 
     func startWave(_ tracks: [Track]) {
@@ -100,27 +159,41 @@ final class RhythmPlayer: ObservableObject {
     }
 
     func pause() {
-        player.pause()
+        if usingAppleMusic {
+            applePlayer.pause()
+        } else {
+            avPlayer.pause()
+        }
         isPlaying = false
         updateNowPlaying()
     }
 
     func resume() {
         guard currentTrack != nil else { return }
-        player.play()
+        if usingAppleMusic {
+            Task {
+                do { try await applePlayer.play() }
+                catch { streamError = "Не удалось продолжить воспроизведение." }
+            }
+        } else {
+            avPlayer.play()
+        }
         isPlaying = true
         updateNowPlaying()
     }
 
     func seek(_ value: Double) {
-        let target = max(0, min(value, duration))
-        player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+        let target = max(0, min(value, max(duration, 1)))
+        if usingAppleMusic {
+            applePlayer.playbackTime = target
+        } else {
+            avPlayer.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+        }
         progress = target
+        updateNowPlaying()
     }
 
-    func next() {
-        advance()
-    }
+    func next() { advance() }
 
     func previous() {
         if progress > 4 {
@@ -186,13 +259,12 @@ final class RhythmPlayer: ObservableObject {
 
     private func updateNowPlaying() {
         guard let track = currentTrack else { return }
-        var info: [String: Any] = [
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
             MPMediaItemPropertyTitle: track.title,
             MPMediaItemPropertyArtist: track.artist,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: progress,
             MPMediaItemPropertyPlaybackDuration: duration,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
         ]
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 }

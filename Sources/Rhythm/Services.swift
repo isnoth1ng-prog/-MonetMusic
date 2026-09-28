@@ -1,4 +1,5 @@
 import Foundation
+import MusicKit
 
 enum RhythmError: LocalizedError {
     case badResponse, noResults
@@ -107,19 +108,18 @@ final class MusicCatalog {
         seeds.append(contentsOf: favorites.prefix(5))
         seeds.append(contentsOf: history.prefix(8))
         var candidates: [Track] = []
-
-        let artists = Array(Set(seeds.compactMap { $0.artist }))
+        let artists = Array(Set(seeds.map { $0.artist }))
         let genres = Array(Set(seeds.compactMap { $0.genre }))
 
         for artist in artists.prefix(3) {
-            if let result = try? await search(artist).tracks {
-                candidates.append(contentsOf: result)
-            }
+            if let result = try? await search(artist).tracks { candidates.append(contentsOf: result) }
         }
         for genre in genres.prefix(2) {
-            if let result = try? await search(genre).tracks {
-                candidates.append(contentsOf: result)
-            }
+            if let result = try? await search(genre).tracks { candidates.append(contentsOf: result) }
+        }
+
+        if candidates.isEmpty {
+            if let result = try? await search("music").tracks { candidates = result }
         }
 
         let blocked = Set(seeds.map { $0.id })
@@ -190,5 +190,41 @@ final class MusicCatalog {
             guard !text.isEmpty else { return nil }
             return LyricLine(text: text, time: minutes * 60 + seconds)
         }.sorted { $0.time < $1.time }
+    }
+}
+
+@MainActor
+final class AppleMusicService: ObservableObject {
+    static let shared = AppleMusicService()
+
+    @Published private(set) var authorization = MusicAuthorization.currentStatus
+
+    private init() {}
+
+    func requestAuthorization() async -> Bool {
+        let status = await MusicAuthorization.request()
+        authorization = status
+        return status == .authorized
+    }
+
+    func resolveSong(for track: Track) async throws -> Song {
+        let request = MusicCatalogSearchRequest(
+            term: "(track.artist) (track.title)",
+            types: [Song.self]
+        )
+        var mutable = request
+        mutable.limit = 5
+        let response = try await mutable.response()
+
+        if let exact = response.songs.first(where: {
+            $0.title.caseInsensitiveCompare(track.title) == .orderedSame &&
+            $0.artistName.caseInsensitiveCompare(track.artist) == .orderedSame
+        }) {
+            return exact
+        }
+        if let first = response.songs.first {
+            return first
+        }
+        throw RhythmError.noResults
     }
 }
