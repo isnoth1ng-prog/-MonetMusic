@@ -229,6 +229,7 @@ struct PlayerView: View {
         .onAppear {
             loadCoverImage()
         }
+        }
     }
     
     @ViewBuilder
