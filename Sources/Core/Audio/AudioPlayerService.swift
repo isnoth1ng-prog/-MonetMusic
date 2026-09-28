@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Combine
+import UIKit
 
 class AudioPlayerService: ObservableObject {
     static let shared = AudioPlayerService()

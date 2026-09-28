@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct PlayerView: View {
     @Environment(\.dismiss) var dismiss
