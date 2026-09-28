@@ -45,12 +45,12 @@ class ITunesMusicService: MusicService {
     }
     
     func getLyrics(track: Track) async throws -> Lyrics? {
-        // Clean title for better matching (remove text in parentheses like "(feat. X)")
         let cleanTitle = track.title.replacingOccurrences(of: "\\([^\\)]+\\)", with: "", options: .regularExpression).trimmingCharacters(in: .whitespaces)
+        let cleanArtist = track.artist
         
-        guard let encodedArtist = track.artist.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-              let encodedTitle = cleanTitle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-              let url = URL(string: "https://api.lyrics.ovh/v1/\(encodedArtist)/\(encodedTitle)") else {
+        guard let encodedTitle = cleanTitle.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let encodedArtist = cleanArtist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://lrclib.net/api/search?track_name=\(encodedTitle)&artist_name=\(encodedArtist)") else {
             return nil
         }
         
@@ -59,25 +59,55 @@ class ITunesMusicService: MusicService {
             request.timeoutInterval = 5
             
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                return nil
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return nil }
+            
+            struct LrcResponse: Codable {
+                let id: Int
+                let syncedLyrics: String?
+                let plainLyrics: String?
             }
             
-            struct LyricsResponse: Codable {
-                let lyrics: String
+            let results = try JSONDecoder().decode([LrcResponse].self, from: data)
+            guard let bestMatch = results.first else { return nil }
+            
+            if let synced = bestMatch.syncedLyrics, !synced.isEmpty {
+                let parsedLines = parseLRC(synced)
+                return Lyrics(id: track.id, trackId: track.id, lines: parsedLines, isSynced: true)
+            } else if let plain = bestMatch.plainLyrics, !plain.isEmpty {
+                let lines = plain.components(separatedBy: "\n").filter { !$0.isEmpty }.map { LyricsLine(text: $0, timeStart: 0) }
+                return Lyrics(id: track.id, trackId: track.id, lines: lines, isSynced: false)
             }
             
-            let result = try JSONDecoder().decode(LyricsResponse.self, from: data)
-            let rawLines = result.lyrics.components(separatedBy: "\n").filter { !$0.isEmpty }
-            
-            // Skip the first line if it's the "Paroles de la chanson" attribution
-            let linesToUse = rawLines.first?.contains("Paroles de") == true ? Array(rawLines.dropFirst()) : rawLines
-            
-            let lines = linesToUse.map { LyricsLine(text: $0, timeStart: 0) }
-            return Lyrics(id: track.id, trackId: track.id, lines: lines, isSynced: false)
+            return nil
         } catch {
             return nil
         }
+    }
+    
+    private func parseLRC(_ lrc: String) -> [LyricsLine] {
+        var lines: [LyricsLine] = []
+        let regex = try! NSRegularExpression(pattern: "\\[(\\d{2}):(\\d{2}\\.\\d{2,3})\\](.*)")
+        
+        let rawLines = lrc.components(separatedBy: "\n")
+        for line in rawLines {
+            let range = NSRange(location: 0, length: line.utf16.count)
+            if let match = regex.firstMatch(in: line, options: [], range: range) {
+                if let minRange = Range(match.range(at: 1), in: line),
+                   let secRange = Range(match.range(at: 2), in: line),
+                   let textRange = Range(match.range(at: 3), in: line) {
+                    
+                    let minStr = String(line[minRange])
+                    let secStr = String(line[secRange])
+                    let text = String(line[textRange]).trimmingCharacters(in: .whitespaces)
+                    
+                    if let min = Double(minStr), let sec = Double(secStr) {
+                        let totalSeconds = (min * 60) + sec
+                        lines.append(LyricsLine(text: text, timeStart: totalSeconds))
+                    }
+                }
+            }
+        }
+        return lines.isEmpty ? lrc.components(separatedBy: "\n").map { LyricsLine(text: $0, timeStart: 0) } : lines
     }
     
     private func map(itunesTrack: ITunesTrack) -> Track? {

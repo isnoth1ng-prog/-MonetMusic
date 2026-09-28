@@ -11,49 +11,67 @@ app.get('/stream', (req, res) => {
         return res.status(400).send('No query provided');
     }
     
-    console.log(`Searching YouTube for: ${query}`);
+    console.log(`[REQUEST] Streaming: ${query}`);
     
     const command = `yt-dlp -f bestaudio -g "ytsearch1:${query.replace(/"/g, '')}"`;
     
     exec(command, (error, stdout, stderr) => {
         if (error) {
-            console.error(`Error executing yt-dlp: ${error.message}`);
+            console.error(`[ERROR] yt-dlp failed: ${error.message}`);
             return res.status(500).send('Failed to extract audio URL');
         }
         
         const streamUrl = stdout.trim();
-        if (streamUrl) {
-            console.log(`Proxying audio stream for: ${query}`);
-            
-            const options = {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            };
-            
-            // Pass along Range headers for seeking and buffering support
-            if (req.headers.range) {
-                options.headers['Range'] = req.headers.range;
-            }
-            
-            https.get(streamUrl, options, (ytRes) => {
-                // Copy all headers from YouTube to the client
-                res.writeHead(ytRes.statusCode, ytRes.headers);
-                ytRes.pipe(res);
-            }).on('error', (err) => {
-                console.error(`Proxy error: ${err.message}`);
-                if (!res.headersSent) {
-                    res.status(500).send('Proxy error');
-                }
-            });
-            
-        } else {
-            res.status(404).send('No audio stream found');
+        if (!streamUrl) {
+            return res.status(404).send('No audio stream found');
         }
+        
+        console.log(`[PROXY] Fetching from YouTube...`);
+        
+        const options = {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': '*/*'
+            }
+        };
+        
+        if (req.headers.range) {
+            options.headers['Range'] = req.headers.range;
+            console.log(`[PROXY] Range requested: ${req.headers.range}`);
+        }
+        
+        const proxyReq = https.get(streamUrl, options, (ytRes) => {
+            console.log(`[PROXY] YouTube responded with ${ytRes.statusCode}`);
+            
+            // Remove headers that might cause issues
+            delete ytRes.headers['strict-transport-security'];
+            
+            res.writeHead(ytRes.statusCode, ytRes.headers);
+            ytRes.pipe(res);
+            
+            ytRes.on('error', (err) => {
+                console.error(`[ERROR] YouTube Stream Error: ${err.message}`);
+            });
+        });
+        
+        proxyReq.on('error', (err) => {
+            console.error(`[ERROR] Proxy Request Error: ${err.message}`);
+            if (!res.headersSent) {
+                res.status(500).send('Proxy error');
+            }
+        });
+        
+        req.on('close', () => {
+            console.log(`[CLIENT] Disconnected`);
+            proxyReq.destroy();
+        });
     });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`MonetMusic Backend is running on port ${PORT}`);
-    console.log(`Make sure yt-dlp is installed and available in your PATH.`);
+    console.log(`========================================`);
+    console.log(` MonetMusic Backend is running!`);
+    console.log(` Port: ${PORT}`);
+    console.log(` Listening on all network interfaces.`);
+    console.log(`========================================`);
 });

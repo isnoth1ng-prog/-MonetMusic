@@ -25,33 +25,37 @@ struct PlayerView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                // Background
+                // 1. Solid base to prevent any transparency showing the tab view
+                Color.black.ignoresSafeArea()
+                
+                // 2. Blurred cover art background
                 if let img = coverImage {
                     Image(uiImage: img)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
-                        .blur(radius: 60)
-                        .overlay(Color.black.opacity(0.6))
+                        .blur(radius: 80)
+                        .overlay(Color.black.opacity(0.5))
                         .ignoresSafeArea()
                 } else {
                     Color.monetBackground.ignoresSafeArea()
                 }
                 
+                // Content
                 VStack(spacing: 0) {
                     // Header / Drag handle
                     VStack(spacing: 12) {
                         Capsule()
-                            .fill(Color.white.opacity(0.3))
-                            .frame(width: 40, height: 5)
-                            .padding(.top, 10)
+                            .fill(Color.white.opacity(0.4))
+                            .frame(width: 36, height: 5)
+                            .padding(.top, 12)
                         
                         Text("Сейчас играет")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white.opacity(0.6))
                             .textCase(.uppercase)
-                            .tracking(1)
+                            .tracking(1.5)
                     }
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
@@ -63,9 +67,9 @@ struct PlayerView: View {
                     
                     if let track = currentTrack {
                         if showingLyrics {
-                            // Integrated Lyrics View
+                            // Integrated Karaoke Lyrics View
                             lyricsContentView()
-                                .frame(maxWidth: .infinity, maxHeight: geo.size.height * 0.5)
+                                .frame(maxWidth: .infinity, maxHeight: geo.size.height * 0.55)
                         } else {
                             // Cover Art
                             let coverSize = min(geo.size.width - 64, geo.size.height * 0.45)
@@ -86,8 +90,8 @@ struct PlayerView: View {
                                 }
                             }
                             .frame(width: coverSize, height: coverSize)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(color: .black.opacity(0.5), radius: 30, y: 15)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .shadow(color: .black.opacity(0.4), radius: 25, y: 15)
                             .transition(.scale(scale: 0.9).combined(with: .opacity))
                         }
                         
@@ -118,36 +122,22 @@ struct PlayerView: View {
                         }
                         .padding(.horizontal, 32)
                         
-                        // Premium Slider
-                        VStack(spacing: 8) {
-                            Slider(value: Binding(
+                        // Custom Interactive Slider
+                        CustomSlider(
+                            progress: Binding(
                                 get: { audioPlayer.progress },
                                 set: { audioPlayer.seek(to: $0) }
-                            ), in: 0...1)
-                            .accentColor(.white)
-                            .onAppear {
-                                let thumbImage = UIImage(systemName: "circle.fill")?.withTintColor(.white, renderingMode: .alwaysOriginal)
-                                UISlider.appearance().setThumbImage(thumbImage, for: .normal)
-                            }
-                            
-                            HStack {
-                                Text(formatTime(seconds: audioPlayer.progress * audioPlayer.duration))
-                                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.6))
-                                Spacer()
-                                Text("-" + formatTime(seconds: max(0, audioPlayer.duration - audioPlayer.progress * audioPlayer.duration)))
-                                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.6))
-                            }
-                        }
+                            ),
+                            duration: audioPlayer.duration
+                        )
                         .padding(.horizontal, 32)
                         .padding(.top, 24)
                         
                         // Playback Controls
-                        HStack(spacing: 40) {
+                        HStack(spacing: 45) {
                             Button(action: { audioPlayer.playPrevious() }) {
                                 Image(systemName: "backward.fill")
-                                    .font(.system(size: 32))
+                                    .font(.system(size: 36))
                                     .foregroundColor(.white)
                             }
                             
@@ -166,7 +156,7 @@ struct PlayerView: View {
                             
                             Button(action: { audioPlayer.playNext() }) {
                                 Image(systemName: "forward.fill")
-                                    .font(.system(size: 32))
+                                    .font(.system(size: 36))
                                     .foregroundColor(.white)
                             }
                         }
@@ -178,18 +168,18 @@ struct PlayerView: View {
                         HStack {
                             Button(action: toggleLyrics) {
                                 Image(systemName: "quote.bubble")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(showingLyrics ? .white : .white.opacity(0.4))
-                                    .frame(width: 44, height: 44)
-                                    .background(showingLyrics ? Color.white.opacity(0.2) : Color.clear)
+                                    .font(.system(size: 20, weight: showingLyrics ? .bold : .regular))
+                                    .foregroundColor(showingLyrics ? .black : .white.opacity(0.6))
+                                    .frame(width: 48, height: 48)
+                                    .background(showingLyrics ? Color.white : Color.clear)
                                     .clipShape(Circle())
                             }
                             Spacer()
                             Button(action: {}) {
                                 Image(systemName: "list.bullet")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(.white.opacity(0.4))
-                                    .frame(width: 44, height: 44)
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .frame(width: 48, height: 48)
                             }
                         }
                         .padding(.horizontal, 32)
@@ -233,19 +223,43 @@ struct PlayerView: View {
             if isLoadingLyrics {
                 ProgressView().tint(.white)
             } else if let lyrics = lyrics {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        ForEach(lyrics.lines, id: \.self) { line in
-                            Text(line.text)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                let currentTime = audioPlayer.progress * audioPlayer.duration
+                
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 24) {
+                            ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { index, line in
+                                let isActive = isLineActive(index: index, currentTime: currentTime, lines: lyrics.lines)
+                                
+                                Text(line.text)
+                                    .font(.system(size: isActive ? 28 : 24, weight: .bold))
+                                    .foregroundColor(isActive ? .white : .white.opacity(0.4))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .scaleEffect(isActive ? 1.05 : 1.0, anchor: .leading)
+                                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isActive)
+                                    .id(index)
+                                    .onTapGesture {
+                                        if lyrics.isSynced {
+                                            let percentage = line.timeStart / audioPlayer.duration
+                                            audioPlayer.seek(to: percentage)
+                                        }
+                                    }
+                            }
+                            Spacer().frame(height: 100)
+                        }
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 40)
+                    }
+                    .onChange(of: currentTime) { time in
+                        if lyrics.isSynced {
+                            if let activeIndex = getActiveLineIndex(currentTime: time, lines: lyrics.lines) {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    proxy.scrollTo(activeIndex, anchor: .center)
+                                }
+                            }
                         }
                     }
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 20)
                 }
-                // Gradient mask for smooth fading at top and bottom
                 .mask(
                     LinearGradient(
                         gradient: Gradient(colors: [.clear, .black, .black, .black, .clear]),
@@ -265,6 +279,21 @@ struct PlayerView: View {
             }
         }
         .transition(.opacity)
+    }
+    
+    private func isLineActive(index: Int, currentTime: Double, lines: [LyricsLine]) -> Bool {
+        let lineTime = lines[index].timeStart
+        let nextLineTime = index + 1 < lines.count ? lines[index + 1].timeStart : Double.infinity
+        return currentTime >= lineTime && currentTime < nextLineTime
+    }
+    
+    private func getActiveLineIndex(currentTime: Double, lines: [LyricsLine]) -> Int? {
+        for i in 0..<lines.count {
+            if isLineActive(index: i, currentTime: currentTime, lines: lines) {
+                return i
+            }
+        }
+        return nil
     }
     
     private func toggleLyrics() {
@@ -321,6 +350,73 @@ struct PlayerView: View {
             modelContext.insert(libraryTrack)
         }
         try? modelContext.save()
+    }
+}
+
+// MARK: - Custom Slider
+struct CustomSlider: View {
+    @Binding var progress: Double
+    let duration: Double
+    
+    @State private var isDragging = false
+    @State private var dragProgress: Double = 0
+    
+    var currentProgress: Double {
+        isDragging ? dragProgress : progress
+    }
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    // Background track
+                    Capsule()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(height: isDragging ? 8 : 4)
+                    
+                    // Fill track
+                    Capsule()
+                        .fill(Color.white)
+                        .frame(width: max(0, geo.size.width * CGFloat(currentProgress)), height: isDragging ? 8 : 4)
+                    
+                    // Thumb
+                    if isDragging {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 16, height: 16)
+                            .offset(x: max(0, min(geo.size.width - 16, geo.size.width * CGFloat(currentProgress) - 8)))
+                            .shadow(radius: 4)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.15), value: isDragging)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            isDragging = true
+                            let p = min(max(value.location.x / geo.size.width, 0), 1)
+                            dragProgress = Double(p)
+                        }
+                        .onEnded { value in
+                            let p = min(max(value.location.x / geo.size.width, 0), 1)
+                            progress = Double(p)
+                            isDragging = false
+                        }
+                )
+            }
+            .frame(height: 16)
+            
+            // Time Labels
+            HStack {
+                Text(formatTime(seconds: currentProgress * duration))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.5))
+                Spacer()
+                Text("-" + formatTime(seconds: max(0, duration - currentProgress * duration)))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+        }
     }
     
     private func formatTime(seconds: Double) -> String {
