@@ -45,23 +45,39 @@ class ITunesMusicService: MusicService {
     }
     
     func getLyrics(track: Track) async throws -> Lyrics? {
-        // Using a public Lyrics API (lyrics.ovh) as a fallback
-        // Since it's often unreliable, we'll mock some lyrics if it fails or just mock them entirely for the prototype.
-        // For a true premium feel without breaking when APIs fail, we generate mocked lyrics.
+        // Clean title for better matching (remove text in parentheses like "(feat. X)")
+        let cleanTitle = track.title.replacingOccurrences(of: "\\([^\\)]+\\)", with: "", options: .regularExpression).trimmingCharacters(in: .whitespaces)
         
-        let mockedLines = [
-            LyricsLine(text: "Music playing...", timeStart: 0),
-            LyricsLine(text: "Enjoying the rhythm of \(track.title)", timeStart: 5),
-            LyricsLine(text: "By \(track.artist)", timeStart: 10),
-            LyricsLine(text: "In the album \(track.album ?? "Unknown")", timeStart: 15),
-            LyricsLine(text: "Let the beat drop", timeStart: 20),
-            LyricsLine(text: "Feeling the Monet aesthetic", timeStart: 25)
-        ]
+        guard let encodedArtist = track.artist.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let encodedTitle = cleanTitle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let url = URL(string: "https://api.lyrics.ovh/v1/\(encodedArtist)/\(encodedTitle)") else {
+            return nil
+        }
         
-        // Simulate network delay
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-        
-        return Lyrics(id: UUID().uuidString, trackId: track.id, lines: mockedLines, isSynced: true)
+        do {
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 5
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                return nil
+            }
+            
+            struct LyricsResponse: Codable {
+                let lyrics: String
+            }
+            
+            let result = try JSONDecoder().decode(LyricsResponse.self, from: data)
+            let rawLines = result.lyrics.components(separatedBy: "\n").filter { !$0.isEmpty }
+            
+            // Skip the first line if it's the "Paroles de la chanson" attribution
+            let linesToUse = rawLines.first?.contains("Paroles de") == true ? Array(rawLines.dropFirst()) : rawLines
+            
+            let lines = linesToUse.map { LyricsLine(text: $0, timeStart: 0) }
+            return Lyrics(id: track.id, trackId: track.id, lines: lines, isSynced: false)
+        } catch {
+            return nil
+        }
     }
     
     private func map(itunesTrack: ITunesTrack) -> Track? {

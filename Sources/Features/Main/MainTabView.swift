@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct MainTabView: View {
     @StateObject private var audioPlayer = AudioPlayerService.shared
@@ -8,42 +9,38 @@ struct MainTabView: View {
         ZStack(alignment: .bottom) {
             TabView {
                 HomeView()
-                    .tabItem {
-                        Label("Главная", systemImage: "house.fill")
-                    }
+                    .tabItem { Label("Главная", systemImage: "house.fill") }
                 
                 MyWaveView()
-                    .tabItem {
-                        Label("Моя волна", systemImage: "play.circle.fill")
-                    }
+                    .tabItem { Label("Моя волна", systemImage: "play.circle.fill") }
                 
                 SearchView()
-                    .tabItem {
-                        Label("Поиск", systemImage: "magnifyingglass")
-                    }
+                    .tabItem { Label("Поиск", systemImage: "magnifyingglass") }
                 
                 LibraryView()
-                    .tabItem {
-                        Label("Медиатека", systemImage: "music.note.list")
-                    }
+                    .tabItem { Label("Медиатека", systemImage: "music.note.list") }
                 
                 SettingsView()
-                    .tabItem {
-                        Label("Настройки", systemImage: "gearshape.fill")
-                    }
+                    .tabItem { Label("Настройки", systemImage: "gearshape.fill") }
             }
             .accentColor(MonetTheme.accent)
             
             if audioPlayer.currentTrack != nil {
                 MiniPlayerView()
                     .onTapGesture {
-                        showingFullPlayer.toggle()
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                            showingFullPlayer = true
+                        }
                     }
-                    .padding(.bottom, 50) // Adjust for tab bar height
+                    .padding(.bottom, 50)
             }
-        }
-        .sheet(isPresented: $showingFullPlayer) {
-            PlayerView()
+            
+            // Full Screen Player Overlay
+            if showingFullPlayer {
+                PlayerView(isShowing: $showingFullPlayer)
+                    .transition(.move(edge: .bottom))
+                    .zIndex(2)
+            }
         }
         .preferredColorScheme(.dark)
     }

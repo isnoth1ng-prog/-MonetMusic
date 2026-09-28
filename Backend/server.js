@@ -1,5 +1,6 @@
 const express = require('express');
 const { exec } = require('child_process');
+const https = require('https');
 
 const app = express();
 const PORT = 3000;
@@ -12,9 +13,6 @@ app.get('/stream', (req, res) => {
     
     console.log(`Searching YouTube for: ${query}`);
     
-    // Use yt-dlp to search and get the direct audio stream URL
-    // -x: audio only
-    // -g: get URL
     const command = `yt-dlp -f bestaudio -g "ytsearch1:${query.replace(/"/g, '')}"`;
     
     exec(command, (error, stdout, stderr) => {
@@ -25,9 +23,30 @@ app.get('/stream', (req, res) => {
         
         const streamUrl = stdout.trim();
         if (streamUrl) {
-            console.log(`Redirecting to audio stream for: ${query}`);
-            // Redirect the iOS AVPlayer directly to the YouTube audio stream
-            res.redirect(302, streamUrl);
+            console.log(`Proxying audio stream for: ${query}`);
+            
+            const options = {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            };
+            
+            // Pass along Range headers for seeking and buffering support
+            if (req.headers.range) {
+                options.headers['Range'] = req.headers.range;
+            }
+            
+            https.get(streamUrl, options, (ytRes) => {
+                // Copy all headers from YouTube to the client
+                res.writeHead(ytRes.statusCode, ytRes.headers);
+                ytRes.pipe(res);
+            }).on('error', (err) => {
+                console.error(`Proxy error: ${err.message}`);
+                if (!res.headersSent) {
+                    res.status(500).send('Proxy error');
+                }
+            });
+            
         } else {
             res.status(404).send('No audio stream found');
         }
