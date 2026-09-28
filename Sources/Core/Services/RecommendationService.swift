@@ -17,7 +17,7 @@ final class RecommendationService {
 
         if let moodQuery = moodQuery(mood), !moodQuery.isEmpty {
             if let artist = topArtists.first {
-                queries.append("(moodQuery) (artist)")
+                queries.append("\(moodQuery) \(artist)")
             } else {
                 queries.append(moodQuery)
             }
@@ -66,7 +66,7 @@ final class RecommendationService {
             }
         }
 
-        let seedIDs = Set(seeds.map(.id))
+        let seedIDs = Set(seeds.map { $0.id })
         var unique: [Track] = []
         var seen = Set<String>()
 
@@ -102,12 +102,12 @@ final class RecommendationService {
         recent.enumerated().forEach { index, track in
             weights[track.artist, default: 0] += max(1, 3 - Double(index) * 0.12)
         }
-        return weights.sorted { $0.value > $1.value }.map(.key)
+        return weights.sorted { $0.value > $1.value }.map { $0.key }
     }
 
     private func weightedGenres(_ tracks: [Track]) -> [String] {
         var weights: [String: Double] = [:]
-        tracks.compactMap(.genre).forEach { weights[$0, default: 0] += 1 }
+        tracks.compactMap { $0.genre }.forEach { weights[$0, default: 0] += 1 }
         return weights.sorted { $0.value > $1.value }.map(.key)
     }
 
