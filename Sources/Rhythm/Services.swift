@@ -108,8 +108,8 @@ final class MusicCatalog {
         seeds.append(contentsOf: history.prefix(8))
         var candidates: [Track] = []
 
-        let artists = Array(NSOrderedSet(array: seeds.compactMap { $0.artist })) as? [String] ?? []
-        let genres = Array(NSOrderedSet(array: seeds.compactMap { $0.genre })) as? [String] ?? []
+        let artists = Array(Set(seeds.compactMap { $0.artist }))
+        let genres = Array(Set(seeds.compactMap { $0.genre }))
 
         for artist in artists.prefix(3) {
             if let result = try? await search(artist).tracks {
