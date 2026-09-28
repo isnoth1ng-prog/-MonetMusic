@@ -5,87 +5,103 @@ struct SearchView: View {
     @State private var results: [Track] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var searchTask: Task<Void, Never>? = nil
-    
+    @State private var searchTask: Task<Void, Never>?
+
     private let musicService: MusicService = ITunesMusicService()
     @StateObject private var audioPlayer = AudioPlayerService.shared
-    
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color.monetBackground.ignoresSafeArea()
-                
+
                 VStack(spacing: 0) {
-                    // Custom Search Bar
-                    HStack {
+                    HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.monetSecondary)
-                        TextField("Артисты, треки, альбомы", text: $query)
+
+                        TextField("Трек, артист, альбом", text: $query)
                             .foregroundColor(.white)
-                            .disableAutocorrection(true)
-                            .onChange(of: query) { oldQuery, newQuery in
-                                debounceSearch()
-                            }
-                            .onSubmit {
-                                performSearch()
-                            }
-                        
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .onChange(of: query) { _, _ in debounceSearch() }
+                            .onSubmit { performSearch() }
+
                         if !query.isEmpty {
-                            Button(action: {
+                            Button {
+                                searchTask?.cancel()
                                 query = ""
                                 results = []
-                                searchTask?.cancel()
-                            }) {
+                                errorMessage = nil
+                            } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.monetSecondary)
                             }
                         }
                     }
-                    .padding(12)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
                     .background(Color.monetSurface)
-                    .cornerRadius(10)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
                     .padding(.horizontal, MonetTheme.padding)
-                    .padding(.top, 16)
-                    .padding(.bottom, 16)
-                    
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+
                     if isLoading {
                         Spacer()
-                        ProgressView()
-                            .tint(.white)
+                        ProgressView().tint(.white)
                         Spacer()
-                    } else if let errorMessage = errorMessage {
+                    } else if let errorMessage {
                         Spacer()
-                        Text(errorMessage)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                        Spacer()
-                    } else if results.isEmpty && !query.isEmpty {
-                        Spacer()
-                        Text("Ждем завершения ввода...")
-                            .foregroundColor(.monetSecondary)
+                        VStack(spacing: 10) {
+                            Image(systemName: "wifi.exclamationmark")
+                                .font(.system(size: 30))
+                                .foregroundColor(.monetSecondary)
+                            Text(errorMessage)
+                                .font(.system(size: 14))
+                                .foregroundColor(.monetSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 28)
+                            Button("Повторить") { performSearch() }
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(MonetTheme.accent)
+                        }
                         Spacer()
                     } else if results.isEmpty {
                         Spacer()
-                        VStack(spacing: 16) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 48))
+                        VStack(spacing: 12) {
+                            Image(systemName: "waveform")
+                                .font(.system(size: 42))
                                 .foregroundColor(.monetSecondary.opacity(0.5))
-                            Text("Найдите любимую музыку")
-                                .font(.system(size: 16))
-                                .foregroundColor(.monetSecondary)
+                            Text(query.isEmpty ? "Найди музыку" : "Ничего не найдено")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.white)
+                            if query.isEmpty {
+                                Text("Ищи по названию трека или артисту")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.monetSecondary)
+                            }
                         }
                         Spacer()
                     } else {
+                        HStack {
+                            Text("\(results.count) треков")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.monetSecondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, MonetTheme.padding)
+                        .padding(.bottom, 4)
+
                         ScrollView {
-                            LazyVStack(spacing: 0) {
+                            LazyVStack(spacing: 1) {
                                 ForEach(results) { track in
                                     TrackRowView(track: track) {
                                         audioPlayer.play(track: track, queue: results)
                                     }
                                 }
                             }
-                            .padding(.bottom, 100) // Padding for Mini Player
+                            .padding(.bottom, 110)
                         }
                     }
                 }
@@ -94,42 +110,50 @@ struct SearchView: View {
             .navigationBarTitleDisplayMode(.large)
         }
     }
-    
+
     private func debounceSearch() {
         searchTask?.cancel()
-        
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
+
+        let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else {
             results = []
+            errorMessage = nil
+            isLoading = false
             return
         }
-        
+
         searchTask = Task {
-            try? await Task.sleep(nanoseconds: 600_000_000) // 0.6s debounce
+            try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled else { return }
-            performSearch()
+            await MainActor.run { performSearch() }
         }
     }
-    
+
     private func performSearch() {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        
+        let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return }
+
+        searchTask?.cancel()
         isLoading = true
         errorMessage = nil
-        
+
         Task {
             do {
-                let fetchedResults = try await musicService.search(query: query)
+                let fetched = try await musicService.search(query: value)
+                guard !Task.isCancelled else { return }
                 await MainActor.run {
-                    self.results = fetchedResults
-                    self.isLoading = false
-                    if fetchedResults.isEmpty {
-                        self.errorMessage = "По запросу «\(query)» ничего не найдено"
+                    results = fetched
+                    isLoading = false
+                    if fetched.isEmpty {
+                        errorMessage = "По запросу «\(value)» ничего не найдено."
                     }
                 }
             } catch {
+                guard !Task.isCancelled else { return }
                 await MainActor.run {
-                    self.errorMessage = error.localizedDescription.isEmpty ? "Не удалось выполнить поиск. Попробуйте ещё раз." : error.localizedDescription
-                    self.isLoading = false
+                    results = []
+                    isLoading = false
+                    errorMessage = error.localizedDescription
                 }
             }
         }
