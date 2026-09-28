@@ -534,9 +534,9 @@ struct FullPlayerView: View {
                     }
                     Spacer()
                     Button { player.toggleLike() } label: {
-                        Image(systemName: player.currentTrack.map(player.isLiked) == true ? "heart.fill" : "heart")
+                        Image(systemName: (player.currentTrack.map { player.isLiked($0) } ?? false) ? "heart.fill" : "heart")
                             .font(.system(size: 25, weight: .semibold))
-                            .foregroundStyle(player.currentTrack.map(player.isLiked) == true ? RhythmTheme.accent : .white)
+                            .foregroundStyle((player.currentTrack.map { player.isLiked($0) } ?? false) ? RhythmTheme.accent : .white)
                     }
                 }
                 .padding(.horizontal, 22)
