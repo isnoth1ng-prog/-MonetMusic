@@ -95,10 +95,10 @@ struct HomeView: View {
         guard recentTracks.isEmpty else { return }
         
         Task {
-            if let pop = try? await musicService.search(query: "русский рэп хиты") {
+            if let pop = try? await self.musicService.search(query: "русский рэп хиты") {
                 await MainActor.run { self.recentTracks = pop }
             }
-            if let fresh = try? await musicService.search(query: "новинки музыки русские") {
+            if let fresh = try? await self.musicService.search(query: "новинки музыки русские") {
                 await MainActor.run { self.recommendedTracks = fresh }
             }
         }
@@ -112,12 +112,12 @@ struct HomeView: View {
             let artists = ["Miyagi", "Скриптонит", "Баста", "Oxxxymiron", "Macan", "Anna Asti", "LSP", "Kizaru", "Pharaoh", "Markul"]
             let randomArtist = artists.randomElement() ?? "Miyagi"
             
-            if let tracks = try? await musicService.search(query: randomArtist) {
+            if let tracks = try? await self.musicService.search(query: randomArtist) {
                 let shuffled = tracks.shuffled()
                 await MainActor.run {
                     self.isGeneratingVibe = false
                     if let first = shuffled.first {
-                        audioPlayer.play(track: first, queue: shuffled)
+                        self.audioPlayer.play(track: first, queue: shuffled)
                     }
                 }
             } else {

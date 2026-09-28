@@ -318,19 +318,19 @@ struct PlayerView: View {
     
     private func toggleLyrics() {
         withAnimation(.easeInOut(duration: 0.3)) {
-            showingLyrics.toggle()
+            self.showingLyrics.toggle()
         }
-        if showingLyrics && lyrics == nil {
-            fetchLyrics()
+        if self.showingLyrics && self.lyrics == nil {
+            self.fetchLyrics()
         }
     }
     
     private func cycleFontSize() {
         let sizes: [Double] = [16.0, 20.0, 24.0, 28.0, 32.0]
-        if let current = sizes.firstIndex(of: lyricsFontSize) {
-            lyricsFontSize = sizes[(current + 1) % sizes.count]
+        if let current = sizes.firstIndex(of: self.lyricsFontSize) {
+            self.lyricsFontSize = sizes[(current + 1) % sizes.count]
         } else {
-            lyricsFontSize = 24.0
+            self.lyricsFontSize = 24.0
         }
     }
     
@@ -339,7 +339,7 @@ struct PlayerView: View {
         isLoadingLyrics = true
         lyrics = nil
         Task {
-            let fetched = try? await musicService.getLyrics(track: track)
+            let fetched = try? await self.musicService.getLyrics(track: track)
             await MainActor.run {
                 self.lyrics = fetched
                 self.isLoadingLyrics = false
@@ -349,8 +349,8 @@ struct PlayerView: View {
     
     private func closePlayer() {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
-            isShowing = false
-            dragOffset = .zero
+            self.isShowing = false
+            self.dragOffset = .zero
         }
     }
     
@@ -362,7 +362,7 @@ struct PlayerView: View {
         Task {
             if let data = try? await URLSession.shared.data(from: url).0,
                let img = UIImage(data: data) {
-                await MainActor.run { coverImage = img }
+                await MainActor.run { self.coverImage = img }
             }
         }
     }
