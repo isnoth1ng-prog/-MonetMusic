@@ -134,7 +134,11 @@ final class RhythmPlayer: ObservableObject {
 
     func toggleLike() {
         guard let currentTrack else { return }
-        ListeningStore.shared.toggleLike(currentTrack)
+        toggleLike(currentTrack)
+    }
+
+    func toggleLike(_ track: Track) {
+        ListeningStore.shared.toggleLike(track)
         objectWillChange.send()
     }
 

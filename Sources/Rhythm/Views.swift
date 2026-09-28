@@ -270,7 +270,31 @@ struct SearchView: View {
         .background(RhythmTheme.background)
         .navigationTitle("Поиск")
         .navigationBarTitleDisplayMode(.large)
+        .onChange(of: query) { _, _ in
+            scheduleSearch()
+        }
         .onDisappear { task?.cancel() }
+    }
+
+    private func scheduleSearch() {
+        task?.cancel()
+        let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.count < 2 {
+            loading = false
+            hasSearched = false
+            tracks = []
+            artists = []
+            error = nil
+            return
+        }
+        loading = true
+        hasSearched = false
+        error = nil
+        task = Task {
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            await search(value)
+        }
     }
 
     private func performSearch() {
@@ -281,24 +305,26 @@ struct SearchView: View {
         hasSearched = false
         error = nil
         task = Task {
-            try? await Task.sleep(nanoseconds: 180_000_000)
+            await search(value)
+        }
+    }
+
+    private func search(_ value: String) async {
+        do {
+            let result = try await MusicCatalog.shared.search(value)
             guard !Task.isCancelled else { return }
-            do {
-                let result = try await MusicCatalog.shared.search(value)
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    tracks = result.tracks
-                    artists = result.artists
-                    loading = false
-                    hasSearched = true
-                }
-            } catch {
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    loading = false
-                    hasSearched = true
-                    self.error = error.localizedDescription
-                }
+            await MainActor.run {
+                tracks = result.tracks
+                artists = result.artists
+                loading = false
+                hasSearched = true
+            }
+        } catch {
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                loading = false
+                hasSearched = true
+                self.error = error.localizedDescription
             }
         }
     }
@@ -485,7 +511,6 @@ struct MiniPlayerView: View {
                 }
             }
             .padding(8).padding(.trailing, 4).rhythmGlass(17)
-        }
         .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
         .onTapGesture(perform: open)
         .padding(.horizontal, 10)
@@ -534,9 +559,9 @@ struct FullPlayerView: View {
                     }
                     Spacer()
                     Button { player.toggleLike() } label: {
-                        Image(systemName: player.currentTrack.map(player.isLiked) == true ? "heart.fill" : "heart")
+                        Image(systemName: (player.currentTrack.map { player.isLiked($0) } ?? false) ? "heart.fill" : "heart")
                             .font(.system(size: 25, weight: .semibold))
-                            .foregroundStyle(player.currentTrack.map(player.isLiked) == true ? RhythmTheme.accent : .white)
+                            .foregroundStyle((player.currentTrack.map { player.isLiked($0) } ?? false) ? RhythmTheme.accent : .white)
                     }
                 }
                 .padding(.horizontal, 22)
