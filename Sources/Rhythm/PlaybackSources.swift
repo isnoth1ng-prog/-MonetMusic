@@ -36,8 +36,12 @@ final class AppleMusicSourceAdapter: PlaybackSourceAdapter {
         }
 
         let song = try await AppleMusicService.shared.resolveSong(for: track)
-        let songDuration = song.duration ?? track.duration
+        guard song.title.caseInsensitiveCompare(track.title) == .orderedSame,
+              song.artistName.caseInsensitiveCompare(track.artist) == .orderedSame else {
+            throw RhythmError.mismatch
+        }
 
+        let songDuration = song.duration ?? track.duration
         if track.duration > 0, songDuration > 0, abs(songDuration - track.duration) > 8 {
             throw RhythmError.mismatch
         }
