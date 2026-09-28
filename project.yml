@@ -1,16 +1,16 @@
-name: MonetMusic
+name: Rhythm
 options:
   bundleIdPrefix: com.monet
   xcodeVersion: "15.0"
 targets:
-  MonetMusic:
+  Rhythm:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
     sources: [Sources]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.monet.music
+        PRODUCT_BUNDLE_IDENTIFIER: com.monet.rhythm
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/App/Info.plist
         CODE_SIGNING_REQUIRED: "NO"
