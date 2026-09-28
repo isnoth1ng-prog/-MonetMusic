@@ -21,7 +21,7 @@ class ITunesMusicService: MusicService {
     
     func search(query: String) async throws -> [Track] {
         guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "https://itunes.apple.com/search?term=\(encodedQuery)&entity=song&limit=30&country=ru") else {
+              let url = URL(string: "https://itunes.apple.com/search?term=\(encodedQuery)&entity=song&limit=200&country=ru") else {
             throw MusicServiceError.invalidURL
         }
         

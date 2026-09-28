@@ -190,7 +190,7 @@ struct PlayerView: View {
         }
         .offset(y: dragOffset.height)
         .gesture(
-            DragGesture()
+            DragGesture(minimumDistance: 30)
                 .onChanged { gesture in
                     if gesture.translation.height > 0 {
                         dragOffset = gesture.translation
@@ -254,7 +254,11 @@ struct PlayerView: View {
                     }
                     .onChange(of: currentTime) { oldTime, newTime in
                         if lyrics.isSynced {
-                            if let activeIndex = getActiveLineIndex(currentTime: newTime, lines: lyrics.lines) {
+                            let newIndex = getActiveLineIndex(currentTime: newTime, lines: lyrics.lines)
+                            let oldIndex = getActiveLineIndex(currentTime: oldTime, lines: lyrics.lines)
+                            
+                            // Only auto-scroll when the line actually changes!
+                            if newIndex != oldIndex, let activeIndex = newIndex {
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     proxy.scrollTo(activeIndex, anchor: .center)
                                 }

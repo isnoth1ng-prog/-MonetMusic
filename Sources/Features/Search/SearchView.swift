@@ -23,7 +23,7 @@ struct SearchView: View {
                         TextField("Артисты, треки, альбомы", text: $query)
                             .foregroundColor(.white)
                             .disableAutocorrection(true)
-                            .onChange(of: query) { newValue in
+                            .onChange(of: query) { oldQuery, newQuery in
                                 debounceSearch()
                             }
                             .onSubmit {
