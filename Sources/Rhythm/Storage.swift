@@ -54,12 +54,12 @@ final class ListeningStore: ObservableObject {
     private func save() {
         if let d = try? JSONEncoder().encode(favorites) { UserDefaults.standard.set(d, forKey: favoritesKey) }
         if let d = try? JSONEncoder().encode(history) { UserDefaults.standard.set(d, forKey: historyKey) }
-        UserDefaults.standard.set(profile, forKey: profileKey)
+        if let data = try? JSONEncoder().encode(profile) { UserDefaults.standard.set(data, forKey: profileKey) }
     }
 
     private func load() {
         if let d = UserDefaults.standard.data(forKey: favoritesKey), let v = try? JSONDecoder().decode([Track].self, from: d) { favorites = v }
         if let d = UserDefaults.standard.data(forKey: historyKey), let v = try? JSONDecoder().decode([Track].self, from: d) { history = v }
-        profile = (UserDefaults.standard.dictionary(forKey: profileKey) as? [String: Double]) ?? [:]
+        if let data = UserDefaults.standard.data(forKey: profileKey), let value = try? JSONDecoder().decode([String: Double].self, from: data) { profile = value }
     }
 }
