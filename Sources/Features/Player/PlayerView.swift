@@ -206,7 +206,7 @@ struct PlayerView: View {
                     }
                 }
         )
-        .onChange(of: currentTrack?.id) { _ in
+        .onChange(of: currentTrack?.id) { oldId, newId in
             loadCoverImage()
             if showingLyrics {
                 fetchLyrics()
@@ -228,7 +228,9 @@ struct PlayerView: View {
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 24) {
-                            ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { index, line in
+                            ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { item in
+                                let index = item.offset
+                                let line = item.element
                                 let isActive = isLineActive(index: index, currentTime: currentTime, lines: lyrics.lines)
                                 
                                 Text(line.text)
@@ -239,8 +241,8 @@ struct PlayerView: View {
                                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isActive)
                                     .id(index)
                                     .onTapGesture {
-                                        if lyrics.isSynced {
-                                            let percentage = line.timeStart / audioPlayer.duration
+                                        if lyrics.isSynced, let timeStart = line.timeStart {
+                                            let percentage = timeStart / audioPlayer.duration
                                             audioPlayer.seek(to: percentage)
                                         }
                                     }
@@ -250,9 +252,9 @@ struct PlayerView: View {
                         .padding(.horizontal, 32)
                         .padding(.vertical, 40)
                     }
-                    .onChange(of: currentTime) { time in
+                    .onChange(of: currentTime) { oldTime, newTime in
                         if lyrics.isSynced {
-                            if let activeIndex = getActiveLineIndex(currentTime: time, lines: lyrics.lines) {
+                            if let activeIndex = getActiveLineIndex(currentTime: newTime, lines: lyrics.lines) {
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     proxy.scrollTo(activeIndex, anchor: .center)
                                 }
@@ -282,8 +284,8 @@ struct PlayerView: View {
     }
     
     private func isLineActive(index: Int, currentTime: Double, lines: [LyricsLine]) -> Bool {
-        let lineTime = lines[index].timeStart
-        let nextLineTime = index + 1 < lines.count ? lines[index + 1].timeStart : Double.infinity
+        guard let lineTime = lines[index].timeStart else { return false }
+        let nextLineTime = index + 1 < lines.count ? (lines[index + 1].timeStart ?? Double.infinity) : Double.infinity
         return currentTime >= lineTime && currentTime < nextLineTime
     }
     
