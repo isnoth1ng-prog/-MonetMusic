@@ -1,0 +1,43 @@
+name: Build Unsigned IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      - name: Build Archive
+        run: |
+          xcodebuild clean archive \
+            -project MonetMusic.xcodeproj \
+            -scheme MonetMusic \
+            -configuration Release \
+            -archivePath $PWD/build/MonetMusic.xcarchive \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+            
+      - name: Create Payload and IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/MonetMusic.xcarchive/Products/Applications/MonetMusic.app Payload/
+          zip -r MonetMusic.ipa Payload
+          
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: MonetMusic-IPA
+          path: MonetMusic.ipa
