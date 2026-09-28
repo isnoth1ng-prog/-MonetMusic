@@ -8,6 +8,8 @@ struct MonetTheme {
     static let padding: CGFloat = 16
     static let cornerRadius: CGFloat = 12
     static let cornerRadiusLarge: CGFloat = 24
+    
+    static let accent = Color.indigo
 }
 
 extension Color {
