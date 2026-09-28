@@ -1,12 +1,12 @@
 name: Rhythm
 options:
   bundleIdPrefix: com.monet
-  xcodeVersion: "26.0"
+  xcodeVersion: "15.0"
 targets:
   Rhythm:
     type: application
     platform: iOS
-    deploymentTarget: "26.0"
+    deploymentTarget: "17.0"
     sources: [Sources/Rhythm]
     resources: [Sources/App/Assets.xcassets]
     settings:
