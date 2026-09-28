@@ -2,12 +2,17 @@ import Foundation
 import MusicKit
 
 enum RhythmError: LocalizedError {
-    case badResponse, noResults
+    case badResponse
+    case noResults
+    case unauthorized
+    case mismatch
 
     var errorDescription: String? {
         switch self {
-        case .badResponse: return "Музыкальный каталог временно недоступен."
-        case .noResults: return "Ничего не найдено."
+        case .badResponse: return "Источник музыки не ответил корректно."
+        case .noResults: return "Точный полный трек у источника не найден."
+        case .unauthorized: return "Доступ к Apple Music не авторизован."
+        case .mismatch: return "Источник вернул другой трек или несовпадающую длительность."
         }
     }
 }
@@ -265,24 +270,68 @@ final class MusicCatalog {
             URLQueryItem(name: "track_name", value: track.title),
             URLQueryItem(name: "artist_name", value: track.artist),
             URLQueryItem(name: "album_name", value: track.album ?? ""),
-            URLQueryItem(name: "duration", value: String(Int(track.duration)))
+            URLQueryItem(name: "duration", value: String(Int(track.duration.rounded())))
         ]
-        guard let (data, response) = try? await session.data(from: c.url!),
+
+        var request = URLRequest(url: c.url!)
+        request.setValue("Rhythm/5.0 (https://github.com/isnoth1ng-prog/-MonetMusic)", forHTTPHeaderField: "User-Agent")
+
+        guard let (data, response) = try? await session.data(for: request),
               let http = response as? HTTPURLResponse,
               200..<300 ~= http.statusCode else { return [] }
 
         struct LRC: Decodable {
+            let trackName: String?
+            let artistName: String?
+            let duration: Int?
+            let instrumental: Bool?
             let syncedLyrics: String?
             let plainLyrics: String?
         }
 
-        guard let value = try? JSONDecoder().decode(LRC.self, from: data) else { return [] }
-        if let synced = value.syncedLyrics { return parseLRC(synced) }
+        guard let value = try? JSONDecoder().decode(LRC.self, from: data),
+              !value.instrumental.unwrap(or: false),
+              lyricMetadataMatches(value.trackName, track.artist, value.artistName, track.title),
+              lyricDurationMatches(value.duration, track.duration) else { return [] }
 
-        return (value.plainLyrics ?? "")
+        if let synced = value.syncedLyrics {
+            let parsed = parseLRC(synced, maxDuration: track.duration)
+            if parsed.count >= 2 { return parsed }
+        }
+
+        let plain = (value.plainLyrics ?? "")
             .components(separatedBy: .newlines)
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            .map { LyricLine(text: $0, time: 0) }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { isValidLyricLine($0) }
+
+        guard plain.count >= 2 else { return [] }
+        return plain.enumerated().map { index, line in
+            LyricLine(text: line, time: min(Double(index) * 3, max(track.duration - 1, 0)))
+        }
+    }
+
+    private func lyricMetadataMatches(_ returnedTitle: String?, _ expectedArtist: String, _ returnedArtist: String?, _ expectedTitle: String) -> Bool {
+        guard let returnedTitle, let returnedArtist else { return false }
+        return normalizedLyric(returnedTitle) == normalizedLyric(expectedTitle)
+            && normalizedLyric(returnedArtist) == normalizedLyric(expectedArtist)
+    }
+
+    private func lyricDurationMatches(_ returned: Int?, _ expected: Double) -> Bool {
+        guard let returned, expected > 0 else { return returned != nil }
+        return abs(Double(returned) - expected) <= 6
+    }
+
+    private func normalizedLyric(_ value: String) -> String {
+        value.lowercased()
+            .replacingOccurrences(of: "[^a-zа-яё0-9]+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func isValidLyricLine(_ value: String) -> Bool {
+        let lower = value.lowercased()
+        if value.count < 2 { return false }
+        let blocked = ["lyrics:", "music:", "written by", "produced by", "composer:", "songwriter:"]
+        return !blocked.contains { lower.hasPrefix($0) }
     }
 
     func initialWaveTrack(seed: Track?, favorites: [Track], history: [Track]) async -> Track? {
