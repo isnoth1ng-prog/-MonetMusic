@@ -64,10 +64,11 @@ final class AudioPlayerService: ObservableObject {
         self.progress = 0
         self.duration = max(track.duration, 0)
 
+        let useBackend = UserDefaults.standard.bool(forKey: "useBackend")
         let backend = UserDefaults.standard.string(forKey: "backendURL")?
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if let backendURL = makeBackendURL(backend, track: track) {
+        if useBackend, let backendURL = makeBackendURL(backend, track: track) {
             start(track: track, url: backendURL, fallbackURL: track.audioURL)
         } else if let audioURL = track.audioURL {
             start(track: track, url: audioURL, fallbackURL: nil)
