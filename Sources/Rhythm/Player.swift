@@ -24,6 +24,10 @@ final class RhythmPlayer: ObservableObject {
     private var queue: [Track] = []
     private var queueIndex = 0
     private var pollTask: Task<Void, Never>?
+    private var waveTask: Task<Void, Never>?
+    private var waveMode = false
+    private var wavePlayedIDs = Set<String>()
+    private var lastRecordedTrackID: String?
 
     private init() {
         let audio = AVAudioSession.sharedInstance()
@@ -43,13 +47,15 @@ final class RhythmPlayer: ObservableObject {
             forInterval: CMTime(seconds: 0.2, preferredTimescale: 600),
             queue: .main
         ) { [weak self] time in
-            guard let self, !self.usingAppleMusic else { return }
-            progress = max(0, time.seconds)
-            if let itemDuration = avPlayer.currentItem?.duration.seconds,
-               itemDuration.isFinite, itemDuration > 0 {
-                duration = itemDuration
+            Task { @MainActor [weak self] in
+                guard let self, !self.usingAppleMusic else { return }
+                self.progress = max(0, time.seconds)
+                if let itemDuration = self.avPlayer.currentItem?.duration.seconds,
+                   itemDuration.isFinite, itemDuration > 0 {
+                    self.duration = itemDuration
+                }
+                self.updateNowPlaying()
             }
-            updateNowPlaying()
         }
     }
 
@@ -57,15 +63,19 @@ final class RhythmPlayer: ObservableObject {
         if let timeObserver { avPlayer.removeTimeObserver(timeObserver) }
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         pollTask?.cancel()
+        waveTask?.cancel()
     }
 
     func play(_ track: Track, queue: [Track] = []) {
+        waveMode = false
+        wavePlayedIDs.removeAll()
+        playInternal(track, queue: queue.isEmpty ? [track] : queue)
+    }
+
+    private func playInternal(_ track: Track, queue: [Track]) {
         if !queue.isEmpty {
             self.queue = queue
             self.queueIndex = queue.firstIndex(where: { $0.id == track.id }) ?? 0
-        } else if self.queue.isEmpty {
-            self.queue = [track]
-            self.queueIndex = 0
         }
 
         currentTrack = track
@@ -73,6 +83,7 @@ final class RhythmPlayer: ObservableObject {
         duration = max(track.duration, 0)
         lyrics = []
         streamError = nil
+        lastRecordedTrackID = nil
         ListeningStore.shared.record(track)
 
         pollTask?.cancel()
@@ -85,8 +96,19 @@ final class RhythmPlayer: ObservableObject {
         }
     }
 
+    func startWave(_ first: Track) {
+        waveTask?.cancel()
+        waveMode = true
+        wavePlayedIDs = [first.id]
+        queue = [first]
+        queueIndex = 0
+        playInternal(first, queue: queue)
+    }
+
     private func playOnPhone(_ track: Track) async {
-        if await AppleMusicService.shared.requestAuthorization() {
+        // Never use iTunes 30-second previews as playback.
+        // Apple Music is attempted only for catalog tracks; Audius is the full-stream fallback.
+        if track.source != .audius, await AppleMusicService.shared.requestAuthorization() {
             do {
                 let song = try await AppleMusicService.shared.resolveSong(for: track)
                 applePlayer.queue = [song]
@@ -99,25 +121,37 @@ final class RhythmPlayer: ObservableObject {
                 return
             } catch {
                 usingAppleMusic = false
-                streamError = "Apple Music не смог запустить трек. Использую резервный поток."
             }
         }
 
         usingAppleMusic = false
-        guard let url = track.audioURL else {
-            isPlaying = false
-            streamError = "Для этого трека нет доступного потока."
+
+        if let audius = await AudiusService.shared.resolve(track),
+           let url = AudiusService.shared.streamURL(for: audius.id) {
+            await playAV(url: url, fallbackDuration: Double(audius.duration ?? 0), track: track)
             return
         }
 
+        // A Track may already be an Audius stream. This is a full stream, not a preview.
+        if track.source == .audius, let url = track.audioURL {
+            await playAV(url: url, fallbackDuration: track.duration, track: track)
+            return
+        }
+
+        isPlaying = false
+        streamError = "Полный поток для этого трека не найден. 30-секундные превью Rhythm не воспроизводит."
+    }
+
+    private func playAV(url: URL, fallbackDuration: Double, track: Track) async {
         avPlayer.replaceCurrentItem(with: AVPlayerItem(url: url))
         avPlayer.play()
         isPlaying = true
+        streamError = nil
 
         let captured = track
         if let item = avPlayer.currentItem {
             let value = try? await item.asset.load(.duration)
-            let seconds = value?.seconds ?? 0
+            let seconds = value?.seconds ?? fallbackDuration
             if seconds.isFinite, seconds > 0, currentTrack?.id == captured.id {
                 duration = seconds
             }
@@ -131,9 +165,7 @@ final class RhythmPlayer: ObservableObject {
             while !Task.isCancelled {
                 guard let self else { return }
                 let time = applePlayer.playbackTime
-                if time.isFinite {
-                    progress = max(0, time)
-                }
+                if time.isFinite { progress = max(0, time) }
                 let status = applePlayer.state.playbackStatus
                 isPlaying = status == .playing
                 updateNowPlaying()
@@ -147,23 +179,12 @@ final class RhythmPlayer: ObservableObject {
         }
     }
 
-    func startWave(_ tracks: [Track]) {
-        guard let first = tracks.first else { return }
-        queue = tracks
-        queueIndex = 0
-        play(first, queue: tracks)
-    }
-
     func toggle() {
         isPlaying ? pause() : resume()
     }
 
     func pause() {
-        if usingAppleMusic {
-            applePlayer.pause()
-        } else {
-            avPlayer.pause()
-        }
+        if usingAppleMusic { applePlayer.pause() } else { avPlayer.pause() }
         isPlaying = false
         updateNowPlaying()
     }
@@ -201,8 +222,12 @@ final class RhythmPlayer: ObservableObject {
             return
         }
         guard !queue.isEmpty else { return }
+        if waveMode && queueIndex == 0 {
+            seek(0)
+            return
+        }
         queueIndex = (queueIndex - 1 + queue.count) % queue.count
-        play(queue[queueIndex], queue: queue)
+        playInternal(queue[queueIndex], queue: queue)
     }
 
     func toggleLike() {
@@ -212,6 +237,9 @@ final class RhythmPlayer: ObservableObject {
 
     func toggleLike(_ track: Track) {
         ListeningStore.shared.toggleLike(track)
+        if ListeningStore.shared.isLiked(track.id) {
+            ListeningStore.shared.noteListening(trackID: track.id, ratio: progress / max(duration, 1), liked: true)
+        }
         objectWillChange.send()
     }
 
@@ -228,12 +256,19 @@ final class RhythmPlayer: ObservableObject {
     }
 
     private func advance() {
+        recordCurrentListening()
+        if waveMode {
+            advanceWave()
+            return
+        }
+
         guard !queue.isEmpty else {
             isPlaying = false
             return
         }
+
         if repeatMode == .one, let currentTrack {
-            play(currentTrack, queue: queue)
+            playInternal(currentTrack, queue: queue)
             return
         }
 
@@ -254,7 +289,43 @@ final class RhythmPlayer: ObservableObject {
                 }
             }
         }
-        play(queue[queueIndex], queue: queue)
+        playInternal(queue[queueIndex], queue: queue)
+    }
+
+    private func advanceWave() {
+        guard let current = currentTrack else { return }
+        isPlaying = false
+        waveTask?.cancel()
+        waveTask = Task { [weak self] in
+            guard let self else { return }
+            let next = await MusicCatalog.shared.nextWaveTrack(
+                current: current,
+                favorites: ListeningStore.shared.favorites,
+                history: ListeningStore.shared.history,
+                playedIDs: wavePlayedIDs
+            )
+            guard !Task.isCancelled else { return }
+            guard let next else {
+                waveMode = false
+                streamError = "Rhythm не нашёл новый подходящий трек."
+                return
+            }
+            wavePlayedIDs.insert(next.id)
+            queue.append(next)
+            queueIndex = queue.count - 1
+            playInternal(next, queue: queue)
+        }
+    }
+
+    private func recordCurrentListening() {
+        guard let track = currentTrack, lastRecordedTrackID != track.id else { return }
+        let ratio = duration > 0 ? progress / duration : 0
+        ListeningStore.shared.noteListening(
+            trackID: track.id,
+            ratio: ratio,
+            liked: ListeningStore.shared.isLiked(track.id)
+        )
+        lastRecordedTrackID = track.id
     }
 
     private func updateNowPlaying() {
