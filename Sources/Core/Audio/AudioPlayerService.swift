@@ -63,9 +63,14 @@ class AudioPlayerService: ObservableObject {
         
         player?.play()
         isPlaying = true
-        self.duration = track.duration
+        // The iTunes catalog duration can describe the full song while the
+        // playable URL may be a preview or a backend-transcoded file. Never
+        // trust catalog duration for the player UI.
+        self.duration = 0
+        self.progress = 0
         
         addPeriodicTimeObserver()
+        resolveActualDuration(for: playerItem)
         updateNowPlayingInfo(track: track)
         
         NotificationCenter.default.addObserver(self, selector: #selector(playerDidFinishPlaying), name: .AVPlayerItemDidPlayToEndTime, object: playerItem)
@@ -123,6 +128,31 @@ class AudioPlayerService: ObservableObject {
         playNext()
     }
     
+    private func resolveActualDuration(for item: AVPlayerItem) {
+        Task {
+            do {
+                let loadedDuration = try await item.asset.load(.duration)
+                let seconds = CMTimeGetSeconds(loadedDuration)
+                guard seconds.isFinite, seconds > 0 else { return }
+                
+                await MainActor.run {
+                    guard self.player?.currentItem === item else { return }
+                    self.duration = seconds
+                    self.updateNowPlayingDuration(seconds)
+                }
+            } catch {
+                // The periodic observer will still pick up duration once AVPlayer
+                // becomes ready. Keep the UI stable instead of using catalog data.
+            }
+        }
+    }
+    
+    private func updateNowPlayingDuration(_ duration: Double) {
+        guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        info[MPMediaItemPropertyPlaybackDuration] = duration
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+    
     private func addPeriodicTimeObserver() {
         if let token = timeObserverToken {
             player?.removeTimeObserver(token)
@@ -133,12 +163,12 @@ class AudioPlayerService: ObservableObject {
         let time = CMTime(seconds: 0.5, preferredTimescale: timeScale)
         timeObserverToken = player?.addPeriodicTimeObserver(forInterval: time, queue: .main) { [weak self] time in
             guard let self = self, let item = self.player?.currentItem else { return }
-            let duration = CMTimeGetSeconds(item.duration)
+            let itemDuration = CMTimeGetSeconds(item.duration)
             let current = CMTimeGetSeconds(time)
             
-            if !duration.isNaN && duration > 0 {
-                self.duration = duration
-                self.progress = current / duration
+            if itemDuration.isFinite && itemDuration > 0 {
+                self.duration = itemDuration
+                self.progress = min(max(current / itemDuration, 0), 1)
             }
         }
     }
