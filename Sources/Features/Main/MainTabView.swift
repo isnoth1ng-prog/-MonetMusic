@@ -26,6 +26,11 @@ struct MainTabView: View {
                     .tabItem {
                         Label("Медиатека", systemImage: "music.note.list")
                     }
+                
+                SettingsView()
+                    .tabItem {
+                        Label("Настройки", systemImage: "gearshape.fill")
+                    }
             }
             .accentColor(MonetTheme.accent)
             

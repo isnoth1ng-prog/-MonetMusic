@@ -5,6 +5,7 @@ struct SearchView: View {
     @State private var results: [Track] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var searchTask: Task<Void, Never>? = nil
     
     private let musicService: MusicService = ITunesMusicService()
     @StateObject private var audioPlayer = AudioPlayerService.shared
@@ -22,6 +23,9 @@ struct SearchView: View {
                         TextField("Артисты, треки, альбомы", text: $query)
                             .foregroundColor(.white)
                             .disableAutocorrection(true)
+                            .onChange(of: query) { newValue in
+                                debounceSearch()
+                            }
                             .onSubmit {
                                 performSearch()
                             }
@@ -30,6 +34,7 @@ struct SearchView: View {
                             Button(action: {
                                 query = ""
                                 results = []
+                                searchTask?.cancel()
                             }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.monetSecondary)
@@ -57,7 +62,7 @@ struct SearchView: View {
                         Spacer()
                     } else if results.isEmpty && !query.isEmpty {
                         Spacer()
-                        Text("Ничего не найдено")
+                        Text("Ждем завершения ввода...")
                             .foregroundColor(.monetSecondary)
                         Spacer()
                     } else if results.isEmpty {
@@ -90,6 +95,21 @@ struct SearchView: View {
         }
     }
     
+    private func debounceSearch() {
+        searchTask?.cancel()
+        
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
+            results = []
+            return
+        }
+        
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 600_000_000) // 0.6s debounce
+            guard !Task.isCancelled else { return }
+            performSearch()
+        }
+    }
+    
     private func performSearch() {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         
@@ -102,10 +122,13 @@ struct SearchView: View {
                 await MainActor.run {
                     self.results = fetchedResults
                     self.isLoading = false
+                    if fetchedResults.isEmpty {
+                        self.errorMessage = "По запросу «\(query)» ничего не найдено"
+                    }
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = "Ошибка загрузки: \(error.localizedDescription)"
+                    self.errorMessage = "Ошибка интернета. Проверьте подключение."
                     self.isLoading = false
                 }
             }

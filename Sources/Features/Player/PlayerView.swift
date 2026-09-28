@@ -148,19 +148,35 @@ struct PlayerView: View {
                     HStack {
                         Button(action: { showingLyrics.toggle() }) {
                             Image(systemName: "quote.bubble")
-                                .font(.system(size: 20))
+                                .font(.system(size: 22))
                                 .foregroundColor(showingLyrics ? MonetTheme.accent : .white.opacity(0.7))
                         }
                         Spacer()
-                        Button(action: {}) {
-                            Image(systemName: "airplayaudio")
-                                .font(.system(size: 20))
-                                .foregroundColor(.white.opacity(0.7))
+                        
+                        // Track Radio Button
+                        Button(action: {
+                            Task {
+                                let service = ITunesMusicService()
+                                if let tracks = try? await service.getRecommendations(seedTracks: [track]) {
+                                    await MainActor.run {
+                                        audioPlayer.queue = tracks
+                                    }
+                                }
+                            }
+                        }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: "waveform.and.magnifyingglass")
+                                    .font(.system(size: 22))
+                                Text("По треку")
+                                    .font(.system(size: 10))
+                            }
+                            .foregroundColor(.white.opacity(0.7))
                         }
+                        
                         Spacer()
                         Button(action: {}) {
                             Image(systemName: "list.bullet")
-                                .font(.system(size: 20))
+                                .font(.system(size: 22))
                                 .foregroundColor(.white.opacity(0.7))
                         }
                     }
