@@ -677,7 +677,7 @@ struct TrackRow: View {
     let track: Track
     var body: some View {
         HStack(spacing: 12) {
-            Button { player.play(track) } label {
+            Button { player.play(track) } label: {
                 CoverView(url: track.highResCoverURL, size: 58, radius: 13)
             }
             .buttonStyle(.plain)
