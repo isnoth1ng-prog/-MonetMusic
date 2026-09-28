@@ -183,7 +183,21 @@ struct PlayerView: View {
                         Spacer(minLength: 16)
                         
                         // Bottom row
-                        HStack(spacing: 24) {
+                        HStack(spacing: 18) {
+                            Button(action: { audioPlayer.toggleShuffle() }) {
+                                Image(systemName: "shuffle")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(audioPlayer.isShuffleEnabled ? MonetTheme.accent : .white.opacity(0.65))
+                                    .frame(width: 42, height: 42)
+                            }
+
+                            Button(action: { audioPlayer.cycleRepeatMode() }) {
+                                Image(systemName: audioPlayer.repeatMode.icon)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(audioPlayer.repeatMode == .off ? .white.opacity(0.65) : MonetTheme.accent)
+                                    .frame(width: 42, height: 42)
+                            }
+
                             Button(action: toggleLyrics) {
                                 Image(systemName: "quote.bubble")
                                     .font(.system(size: 20, weight: showingLyrics ? .bold : .regular))
@@ -192,11 +206,11 @@ struct PlayerView: View {
                                     .background(showingLyrics ? Color.white : Color.clear)
                                     .clipShape(Circle())
                             }
-                            
+
                             if showingLyrics {
                                 Button(action: cycleFontSize) {
                                     Image(systemName: "textformat.size")
-                                        .font(.system(size: 18))
+                                        .font(.system(size: 17))
                                         .foregroundColor(.white.opacity(0.8))
                                         .frame(width: 40, height: 40)
                                         .background(Color.white.opacity(0.15))
@@ -204,17 +218,10 @@ struct PlayerView: View {
                                 }
                                 .transition(.opacity)
                             }
-                            
-                            Spacer()
-                            
-                            Button(action: {}) {
-                                Image(systemName: "list.bullet")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .frame(width: 48, height: 48)
-                            }
+
+                            Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, 28)
                         .padding(.bottom, 32)
                     }
                 }
