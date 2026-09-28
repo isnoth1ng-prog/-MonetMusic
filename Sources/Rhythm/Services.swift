@@ -112,7 +112,9 @@ final class AudiusService {
 
     private func isPlayable(_ value: TrackResponse) -> Bool {
         let streamable = value.isStreamable?.lowercased() == "true"
-        return streamable && value.isStreamGated != true && (value.duration ?? 0) >= 45
+        let title = value.title.lowercased()
+        let blocked = ["karaoke", "tribute", "bootleg", "reupload", "re-upload", "unofficial", "nightcore", "8d audio", "sped up", "slowed", "ai cover", "type beat", "instrumental cover"].contains { title.contains($0) }
+        return streamable && value.isStreamGated != true && (value.duration ?? 0) >= 45 && !blocked
     }
 
     private func normalized(_ value: String) -> String {
@@ -236,7 +238,7 @@ final class MusicCatalog {
                 artistID: item.artistId,
                 coverURL: item.artworkUrl100.flatMap(URL.init(string:)),
                 releaseDate: item.releaseDate.flatMap(parseDate),
-                type: albumType(item.collectionType),
+                type: albumType(item.collectionType, trackCount: item.trackCount),
                 trackCount: item.trackCount ?? 0
             )
         }.sorted { ($0.releaseDate ?? .distantPast) > ($1.releaseDate ?? .distantPast) }
@@ -373,12 +375,14 @@ final class MusicCatalog {
         return noiseTokens.contains { lower.contains($0) }
     }
 
-    private func albumType(_ value: String?) -> Album.AlbumType {
+    private func albumType(_ value: String?, trackCount: Int?) -> Album.AlbumType {
         switch value?.lowercased() {
-        case "album": return .album
-        case "ep": return .ep
         case "single": return .single
-        default: return .other
+        case "ep": return .ep
+        case "album":
+            return (trackCount ?? 99) <= 6 ? .ep : .album
+        default:
+            return .other
         }
     }
 
