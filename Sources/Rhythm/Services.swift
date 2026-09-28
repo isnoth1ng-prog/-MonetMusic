@@ -12,6 +12,7 @@ enum RhythmError: LocalizedError {
     }
 }
 
+@MainActor
 final class MusicCatalog {
     static let shared = MusicCatalog()
     private let session: URLSession
