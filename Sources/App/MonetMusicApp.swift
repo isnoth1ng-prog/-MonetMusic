@@ -2,8 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct MonetMusicApp: App {
-    
+struct RhythmApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()

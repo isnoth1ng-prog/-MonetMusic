@@ -3,45 +3,42 @@ import SwiftUI
 struct TrackRowView: View {
     let track: Track
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 16) {
-                AsyncCoverImage(url: track.coverURL, size: 56)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(track.title)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    
-                    HStack(spacing: 4) {
+            HStack(spacing: 14) {
+                AsyncCoverImage(url: track.highResCoverURL, size: 56)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Text(track.title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+
                         if track.isExplicit {
                             Image(systemName: "e.square.fill")
-                                .font(.system(size: 12))
+                                .font(.system(size: 11))
                                 .foregroundColor(.monetSecondary)
                         }
-                        Text(track.artist)
-                            .font(.system(size: 14))
-                            .foregroundColor(.monetSecondary)
-                            .lineLimit(1)
                     }
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    // Quick options like Add to library could go here
-                }) {
-                    Image(systemName: "ellipsis")
+
+                    Text(track.artist)
+                        .font(.system(size: 13))
                         .foregroundColor(.monetSecondary)
-                        .padding(8)
+                        .lineLimit(1)
                 }
+
+                Spacer()
+
+                Image(systemName: "play.circle")
+                    .font(.system(size: 22))
+                    .foregroundColor(.white.opacity(0.38))
             }
-            .padding(.vertical, 8)
             .padding(.horizontal, MonetTheme.padding)
-            .background(Color.monetBackground.opacity(0.01)) // Make entire row clickable
+            .padding(.vertical, 9)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 }

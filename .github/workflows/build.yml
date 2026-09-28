@@ -27,29 +27,21 @@ jobs:
       - name: Build App
         run: |
           set -o pipefail
-          xcodebuild clean build \
-            -project MonetMusic.xcodeproj \
-            -scheme MonetMusic \
-            -configuration Release \
-            -sdk iphoneos \
-            CONFIGURATION_BUILD_DIR=$PWD/build \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO > build.log 2>&1
-            
-      - name: Push log if failed
+          xcodebuild clean build             -project Rhythm.xcodeproj             -scheme Rhythm             -configuration Release             -sdk iphoneos             CONFIGURATION_BUILD_DIR=$PWD/build             CODE_SIGN_IDENTITY=""             CODE_SIGNING_REQUIRED=NO             CODE_SIGNING_ALLOWED=NO > build.log 2>&1
+
+      - name: Print Build Log on Failure
         if: failure()
         run: |
-          curl -X POST -H "Content-Type: text/plain" --data-binary @build.log https://full-coats-film.loca.lt/log
-          
+          tail -n 250 build.log
+
       - name: Create Payload and IPA
         run: |
           mkdir -p Payload
-          cp -r build/MonetMusic.app Payload/
-          zip -r MonetMusic.ipa Payload
-          
+          cp -r build/Rhythm.app Payload/
+          zip -r Rhythm.ipa Payload
+
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: MonetMusic-IPA
-          path: MonetMusic.ipa
+          name: Rhythm-IPA
+          path: Rhythm.ipa
