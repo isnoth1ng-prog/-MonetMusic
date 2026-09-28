@@ -38,8 +38,7 @@ struct RootView: View {
                     MiniPlayerView { showPlayer = true }
                 }
 
-                GlassEffectContainer(spacing: 14) {
-                    HStack(spacing: 4) {
+                                    HStack(spacing: 4) {
                         ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
                             Button {
                                 selected = index
@@ -55,12 +54,10 @@ struct RootView: View {
                                 .padding(.vertical, 8)
                             }
                             .buttonStyle(.plain)
-                            .glassEffect(.regular.tint(selected == index ? RhythmTheme.accent.opacity(0.18) : nil).interactive(),
-                                         in: .rect(cornerRadius: 18))
+                            .rhythmGlass(18)
                         }
                     }
                     .padding(6)
-                }
             }
             .padding(.horizontal, 12)
             .padding(.top, 7)
@@ -124,8 +121,7 @@ struct HomeView: View {
                                         .font(.system(size: 10, weight: .bold))
                                         .tracking(2)
                                         .foregroundStyle(RhythmTheme.accent)
-                                    Text("Музыка, которая меняется
-вместе с тобой")
+                                    Text("Музыка, которая меняется вместе с тобой")
                                         .font(.system(size: 24, weight: .bold, design: .rounded))
                                         .tracking(-0.4)
                                 }
@@ -134,8 +130,7 @@ struct HomeView: View {
                                     .font(.system(size: 24, weight: .bold))
                                     .foregroundStyle(RhythmTheme.accent)
                                     .frame(width: 54, height: 54)
-                                    .glassEffect(.regular.tint(RhythmTheme.accent.opacity(0.16)).interactive(),
-                                                 in: Circle())
+                                    .rhythmGlass(28)
                             }
 
                             WaveShape()
@@ -503,7 +498,7 @@ struct SearchView: View {
             await MainActor.run {
                 loading = false
                 hasSearched = true
-                error = error.localizedDescription
+                self.error = error.localizedDescription
             }
         }
     }
@@ -934,7 +929,7 @@ struct MiniPlayerView: View {
 
 struct FullPlayerView: View {
     @EnvironmentObject private var player: RhythmPlayer
-    @Environment(.dismiss) private var dismiss
+    @Environment(\.dismiss) private var dismiss
     @State private var showLyrics = false
 
     var body: some View {
@@ -1000,8 +995,7 @@ struct FullPlayerView: View {
                                         .font(.system(size: 18, weight: .bold))
                                         .foregroundStyle(.white.opacity(0.92))
                                         .frame(width: 52, height: 52)
-                                        .glassEffect(.regular.tint(RhythmTheme.accent.opacity(0.24)).interactive(),
-                                                     in: Circle())
+                                        .rhythmGlass(28)
                                 }
                             }
                         }
