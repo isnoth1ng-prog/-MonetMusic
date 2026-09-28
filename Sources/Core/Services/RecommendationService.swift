@@ -108,7 +108,7 @@ final class RecommendationService {
     private func weightedGenres(_ tracks: [Track]) -> [String] {
         var weights: [String: Double] = [:]
         tracks.compactMap { $0.genre }.forEach { weights[$0, default: 0] += 1 }
-        return weights.sorted { $0.value > $1.value }.map(.key)
+        return weights.sorted { $0.value > $1.value }.map { $0.key }
     }
 
     private func moodQuery(_ mood: String?) -> String? {
