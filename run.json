@@ -1,28 +1,28 @@
 {
-  "total_count": 20,
+  "total_count": 21,
   "workflow_runs": [
     {
-      "id": 36488446743,
+      "id": 36488791252,
       "name": "Build Unsigned IPA",
-      "node_id": "WFR_kwLOUw2NfM8AAAAIfuGDFw",
+      "node_id": "WFR_kwLOUw2NfM8AAAAIfubE1A",
       "head_branch": "main",
-      "head_sha": "ae239f949fc07f1ba22a87bb69f361fa9fd32734",
+      "head_sha": "04eb20c02a06362148285a55778e50561d73a32f",
       "path": ".github/workflows/build.yml",
-      "display_title": "v2.0.2: Explicit self captures",
-      "run_number": 20,
+      "display_title": "v2.0.3: Fix actool by restoring original AppIcon Contents.json",
+      "run_number": 21,
       "event": "push",
       "status": "completed",
       "conclusion": "failure",
       "workflow_id": 369355757,
-      "check_suite_id": 98805906067,
-      "check_suite_node_id": "CS_kwDOUw2NfM8AAAAXAUp6kw",
-      "url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743",
-      "html_url": "https://github.com/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743",
+      "check_suite_id": 98806849415,
+      "check_suite_node_id": "CS_kwDOUw2NfM8AAAAXAVjfhw",
+      "url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488791252",
+      "html_url": "https://github.com/isnoth1ng-prog/-MonetMusic/actions/runs/36488791252",
       "pull_requests": [
 
       ],
-      "created_at": "2026-09-28T21:47:46Z",
-      "updated_at": "2026-09-28T21:48:43Z",
+      "created_at": "2026-09-28T21:51:05Z",
+      "updated_at": "2026-09-28T21:51:53Z",
       "actor": {
         "login": "isnoth1ng-prog",
         "id": 324460889,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-09-28T21:47:46Z",
+      "run_started_at": "2026-09-28T21:51:05Z",
       "triggering_actor": {
         "login": "isnoth1ng-prog",
         "id": 324460889,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743/jobs",
-      "logs_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743/logs",
-      "check_suite_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/check-suites/98805906067",
-      "artifacts_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743/artifacts",
-      "cancel_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743/cancel",
-      "rerun_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743/rerun",
+      "jobs_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488791252/jobs",
+      "logs_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488791252/logs",
+      "check_suite_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/check-suites/98806849415",
+      "artifacts_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488791252/artifacts",
+      "cancel_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488791252/cancel",
+      "rerun_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488791252/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/workflows/369355757",
       "head_commit": {
-        "id": "ae239f949fc07f1ba22a87bb69f361fa9fd32734",
-        "tree_id": "2f033baa1314e08886be0f2600814692a4848806",
-        "message": "v2.0.2: Explicit self captures",
-        "timestamp": "2026-09-28T21:47:40Z",
+        "id": "04eb20c02a06362148285a55778e50561d73a32f",
+        "tree_id": "2104f9c3c5e19a3af1961a42d2ab1cc047d0c9ac",
+        "message": "v2.0.3: Fix actool by restoring original AppIcon Contents.json",
+        "timestamp": "2026-09-28T21:50:59Z",
         "author": {
           "name": "Bot",
           "email": "bot@example.com"

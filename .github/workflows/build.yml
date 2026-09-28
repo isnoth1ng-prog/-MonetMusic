@@ -26,6 +26,7 @@ jobs:
 
       - name: Build App
         run: |
+          set -o pipefail
           xcodebuild clean build \
             -project MonetMusic.xcodeproj \
             -scheme MonetMusic \
@@ -34,8 +35,17 @@ jobs:
             CONFIGURATION_BUILD_DIR=$PWD/build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO > build.log 2>&1
             
+      - name: Push log if failed
+        if: failure()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add build.log
+          git commit -m "Upload build failure log"
+          git push
+          
       - name: Create Payload and IPA
         run: |
           mkdir -p Payload
