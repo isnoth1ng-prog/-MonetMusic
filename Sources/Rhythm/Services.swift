@@ -12,6 +12,117 @@ enum RhythmError: LocalizedError {
     }
 }
 
+
+final class AudiusService {
+    static let shared = AudiusService()
+
+    private let session: URLSession
+    private let baseURL = "https://discoveryprovider.audius.co/v1"
+
+    struct TrackResponse: Decodable {
+        let id: String
+        let title: String
+        let duration: Int?
+        let isStreamable: String?
+        let releaseDate: String?
+        let genre: String?
+        let artwork: Artwork?
+        let user: User
+        let isStreamGated: Bool?
+
+        struct Artwork: Decodable {
+            let `_1000x1000`: String?
+            let `_480x480`: String?
+        }
+
+        struct User: Decodable {
+            let id: String
+            let name: String
+        }
+    }
+
+    private struct SearchResponse: Decodable {
+        let data: [TrackResponse]
+    }
+
+    private init() {
+        let c = URLSessionConfiguration.ephemeral
+        c.timeoutIntervalForRequest = 10
+        c.timeoutIntervalForResource = 15
+        c.waitsForConnectivity = true
+        session = URLSession(configuration: c)
+    }
+
+    func search(_ query: String, limit: Int = 25) async -> [TrackResponse] {
+        var components = URLComponents(string: baseURL + "/tracks/search")!
+        components.queryItems = [
+            URLQueryItem(name: "query", value: query),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "sort_method", value: "relevant")
+        ]
+
+        guard let url = components.url,
+              let (data, response) = try? await session.data(from: url),
+              let http = response as? HTTPURLResponse,
+              200..<300 ~= http.statusCode,
+              let decoded = try? JSONDecoder().decode(SearchResponse.self, from: data) else {
+            return []
+        }
+
+        return decoded.data.filter(isPlayable)
+    }
+
+    func resolve(_ track: Track) async -> TrackResponse? {
+        let query = "\(track.artist) \(track.title)"
+        let candidates = await search(query, limit: 15)
+
+        return candidates.first { candidate in
+            normalized(candidate.title) == normalized(track.title) &&
+            normalized(candidate.user.name) == normalized(track.artist)
+        } ?? candidates.first { candidate in
+            normalized(candidate.title) == normalized(track.title)
+        }
+    }
+
+    func streamURL(for id: String) -> URL? {
+        URL(string: baseURL + "/tracks/\(id)/stream")
+    }
+
+    func makeTrack(_ value: TrackResponse) -> Track? {
+        guard isPlayable(value),
+              let streamURL = streamURL(for: value.id) else { return nil }
+
+        let artworkString = value.artwork?._1000x1000 ?? value.artwork?._480x480
+        return Track(
+            id: "audius:\(value.id)",
+            title: value.title,
+            artist: value.user.name,
+            artistID: nil,
+            album: nil,
+            albumID: nil,
+            coverURL: artworkString.flatMap(URL.init(string:)),
+            audioURL: streamURL,
+            duration: Double(value.duration ?? 0),
+            genre: value.genre,
+            releaseDate: value.releaseDate.flatMap { ISO8601DateFormatter().date(from: $0) },
+            isExplicit: false,
+            source: .audius
+        )
+    }
+
+    private func isPlayable(_ value: TrackResponse) -> Bool {
+        let streamable = value.isStreamable?.lowercased() == "true"
+        return streamable && value.isStreamGated != true && (value.duration ?? 0) >= 45
+    }
+
+    private func normalized(_ value: String) -> String {
+        value
+            .lowercased()
+            .replacingOccurrences(of: "[^a-zа-яё0-9]+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 @MainActor
 final class MusicCatalog {
     static let shared = MusicCatalog()
@@ -57,7 +168,8 @@ final class MusicCatalog {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return ([], []) }
 
-        var tracks: [Track] = []
+        let audiusTracks = await AudiusService.shared.search(q)
+        var tracks: [Track] = audiusTracks.compactMap(AudiusService.shared.makeTrack)
         for country in ["ru", "us", "de"] {
             let url = searchURL(term: q, country: country, entity: "song", limit: 50)
             let (data, response) = try await session.data(from: url)
