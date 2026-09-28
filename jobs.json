@@ -2,21 +2,21 @@
   "total_count": 1,
   "jobs": [
     {
-      "id": 109149344758,
-      "run_id": 36487954464,
+      "id": 109150955415,
+      "run_id": 36488446743,
       "workflow_name": "Build Unsigned IPA",
       "head_branch": "main",
-      "run_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36487954464",
+      "run_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743",
       "run_attempt": 1,
-      "node_id": "CR_kwDOUw2NfM8AAAAZac7T9g",
-      "head_sha": "d7bff744393b16d4510227c70aa39900a8588010",
-      "url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/jobs/109149344758",
-      "html_url": "https://github.com/isnoth1ng-prog/-MonetMusic/actions/runs/36487954464/job/109149344758",
+      "node_id": "CR_kwDOUw2NfM8AAAAZaednlw",
+      "head_sha": "ae239f949fc07f1ba22a87bb69f361fa9fd32734",
+      "url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/actions/jobs/109150955415",
+      "html_url": "https://github.com/isnoth1ng-prog/-MonetMusic/actions/runs/36488446743/job/109150955415",
       "status": "completed",
       "conclusion": "failure",
-      "created_at": "2026-09-28T21:43:10Z",
-      "started_at": "2026-09-28T21:43:17Z",
-      "completed_at": "2026-09-28T21:44:02Z",
+      "created_at": "2026-09-28T21:47:47Z",
+      "started_at": "2026-09-28T21:47:55Z",
+      "completed_at": "2026-09-28T21:48:42Z",
       "name": "build",
       "steps": [
         {
@@ -24,88 +24,88 @@
           "status": "completed",
           "conclusion": "success",
           "number": 1,
-          "started_at": "2026-09-28T21:43:18Z",
-          "completed_at": "2026-09-28T21:43:19Z"
+          "started_at": "2026-09-28T21:47:55Z",
+          "completed_at": "2026-09-28T21:47:56Z"
         },
         {
           "name": "Run actions/checkout@v4",
           "status": "completed",
           "conclusion": "success",
           "number": 2,
-          "started_at": "2026-09-28T21:43:19Z",
-          "completed_at": "2026-09-28T21:43:22Z"
+          "started_at": "2026-09-28T21:47:56Z",
+          "completed_at": "2026-09-28T21:48:00Z"
         },
         {
           "name": "Select latest Xcode",
           "status": "completed",
           "conclusion": "success",
           "number": 3,
-          "started_at": "2026-09-28T21:43:22Z",
-          "completed_at": "2026-09-28T21:43:22Z"
+          "started_at": "2026-09-28T21:48:00Z",
+          "completed_at": "2026-09-28T21:48:00Z"
         },
         {
           "name": "Install Xcodegen",
           "status": "completed",
           "conclusion": "success",
           "number": 4,
-          "started_at": "2026-09-28T21:43:22Z",
-          "completed_at": "2026-09-28T21:43:27Z"
+          "started_at": "2026-09-28T21:48:00Z",
+          "completed_at": "2026-09-28T21:48:06Z"
         },
         {
           "name": "Generate Xcode Project",
           "status": "completed",
           "conclusion": "success",
           "number": 5,
-          "started_at": "2026-09-28T21:43:27Z",
-          "completed_at": "2026-09-28T21:43:27Z"
+          "started_at": "2026-09-28T21:48:06Z",
+          "completed_at": "2026-09-28T21:48:06Z"
         },
         {
           "name": "Build App",
           "status": "completed",
           "conclusion": "failure",
           "number": 6,
-          "started_at": "2026-09-28T21:43:27Z",
-          "completed_at": "2026-09-28T21:43:58Z"
+          "started_at": "2026-09-28T21:48:06Z",
+          "completed_at": "2026-09-28T21:48:38Z"
         },
         {
           "name": "Create Payload and IPA",
           "status": "completed",
           "conclusion": "skipped",
           "number": 7,
-          "started_at": "2026-09-28T21:43:58Z",
-          "completed_at": "2026-09-28T21:43:58Z"
+          "started_at": "2026-09-28T21:48:38Z",
+          "completed_at": "2026-09-28T21:48:38Z"
         },
         {
           "name": "Upload IPA",
           "status": "completed",
           "conclusion": "skipped",
           "number": 8,
-          "started_at": "2026-09-28T21:43:58Z",
-          "completed_at": "2026-09-28T21:43:58Z"
+          "started_at": "2026-09-28T21:48:38Z",
+          "completed_at": "2026-09-28T21:48:38Z"
         },
         {
           "name": "Post Run actions/checkout@v4",
           "status": "completed",
           "conclusion": "success",
           "number": 16,
-          "started_at": "2026-09-28T21:43:58Z",
-          "completed_at": "2026-09-28T21:44:00Z"
+          "started_at": "2026-09-28T21:48:38Z",
+          "completed_at": "2026-09-28T21:48:39Z"
         },
         {
           "name": "Complete job",
           "status": "completed",
           "conclusion": "success",
           "number": 17,
-          "started_at": "2026-09-28T21:44:00Z",
-          "completed_at": "2026-09-28T21:44:01Z"
+          "started_at": "2026-09-28T21:48:39Z",
+          "completed_at": "2026-09-28T21:48:40Z"
         }
       ],
-      "check_run_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/check-runs/109149344758",
+      "check_run_url": "https://api.github.com/repos/isnoth1ng-prog/-MonetMusic/check-runs/109150955415",
       "labels": [
         "macos-14"
       ],
-      "runner_id": 1000000018,
-      "runner_name": "GitHub Actions 1000000018",
+      "runner_id": 1000000019,
+      "runner_name": "GitHub Actions 1000000019",
       "runner_group_id": 0,
       "runner_group_name": "GitHub Actions"
     }
