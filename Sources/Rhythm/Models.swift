@@ -24,7 +24,7 @@ struct Track: Identifiable, Hashable, Codable {
     }
 
     enum TrackSource: String, Codable, Hashable {
-        case appleMusicCatalog
+        case catalog
         case audius
         case previewFallback
     }
@@ -47,7 +47,13 @@ struct Track: Identifiable, Hashable, Codable {
         genre = try c.decodeIfPresent(String.self, forKey: .genre)
         releaseDate = try c.decodeIfPresent(Date.self, forKey: .releaseDate)
         isExplicit = try c.decodeIfPresent(Bool.self, forKey: .isExplicit) ?? false
-        source = try c.decodeIfPresent(TrackSource.self, forKey: .source) ?? .appleMusicCatalog
+        if let value = try c.decodeIfPresent(TrackSource.self, forKey: .source) {
+            source = value
+        } else if let legacy = try c.decodeIfPresent(String.self, forKey: .source), legacy == "appleMusicCatalog" {
+            source = .catalog
+        } else {
+            source = .catalog
+        }
     }
 
     init(
@@ -63,7 +69,7 @@ struct Track: Identifiable, Hashable, Codable {
         genre: String?,
         releaseDate: Date?,
         isExplicit: Bool,
-        source: TrackSource = .appleMusicCatalog
+        source: TrackSource = .catalog
     ) {
         self.id = id
         self.title = title
