@@ -33,15 +33,16 @@ final class AppleMusicSourceAdapter: PlaybackSourceAdapter {
             throw RhythmError.noResults
         }
 
-        var request = MusicCatalogSearchRequest(term: track.artist + " " + track.title, types: [Song.self])
+        let cleanArtist = track.artist.replacingOccurrences(of: "[^a-zA-Zа-яА-ЯёЁ0-9\\s]", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanTitle = track.title.replacingOccurrences(of: "[^a-zA-Zа-яА-ЯёЁ0-9\\s]", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+        var request = MusicCatalogSearchRequest(term: "\(cleanArtist) \(cleanTitle)", types: [Song.self])
         request.limit = 25
         let response = try await request.response()
         let songs = Array(response.songs)
 
-        guard let song = songs
-            .filter({ matches($0, track: track) })
-            .sorted(by: { score($0, track: track) > score($1, track: track) })
-            .first else {
+        let sortedSongs = songs.sorted(by: { score($0, track: track) > score($1, track: track) })
+        
+        guard let song = sortedSongs.first else {
             throw RhythmError.noResults
         }
 

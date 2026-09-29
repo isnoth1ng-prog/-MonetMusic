@@ -64,9 +64,10 @@ struct CleanFullPlayerView: View {
                 CleanLyricsView(lines: player.lyrics, progress: player.progress)
                     .padding(.horizontal, 8)
             } else {
-                CoverView(url: player.currentTrack?.highResCoverURL, size: 1, radius: 26)
-                    .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                GeometryReader { inner in
+                    CoverView(url: player.currentTrack?.highResCoverURL, size: min(inner.size.width, inner.size.height), radius: 26)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
 
             if !player.lyrics.isEmpty {
