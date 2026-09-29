@@ -69,7 +69,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Полное воспроизведение")
                                 .font(.system(size: 15, weight: .semibold))
-                            Text("Audius → Piped. Без локальных файлов и 30-секундных превью.")
+                            Text("Apple Music → Audius → Piped. Полные треки, без локальных файлов и превью.")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(RhythmTheme.secondary)
                         }
@@ -85,8 +85,8 @@ struct SettingsView: View {
                 }
 
                 settingsSection("Rhythm") {
-                    LabeledContent("Версия", value: "5.1")
-                    LabeledContent("Источники", value: "Audius full stream + Piped")
+                    LabeledContent("Версия", value: "5.2")
+                    LabeledContent("Источники", value: "Apple Music + Audius + Piped")
                     LabeledContent("Тексты", value: "LRCLIB")
                     LabeledContent("Wave", value: "Адаптивная, трек за треком")
                 }
