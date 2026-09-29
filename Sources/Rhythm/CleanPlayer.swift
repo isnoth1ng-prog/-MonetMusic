@@ -38,7 +38,7 @@ struct CleanFullPlayerView: View {
             Spacer()
             VStack(spacing: 3) {
                 Text("СЕЙЧАС ИГРАЕТ").font(.system(size: 9, weight: .bold)).tracking(1.7)
-                Text(player.status.label.uppercased())
+                Text(player.sourceLabel.uppercased())
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(player.status == .failed ? Color.red.opacity(0.85) : RhythmTheme.accent)
             }
@@ -144,6 +144,6 @@ struct CleanFullPlayerView: View {
 
     private func time(_ value: Double) -> String {
         let total = max(0, Int(value.isFinite ? value.rounded() : 0))
-        return "(total / 60):(String(format: "%02d", total % 60))"
+        return "\(total / 60):\(String(format: "%02d", total % 60))"
     }
 }

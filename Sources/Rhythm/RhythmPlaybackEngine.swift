@@ -38,7 +38,12 @@ final class RhythmPlaybackEngine: ObservableObject {
     @Published var shuffle = false
 
     var isPlaying: Bool { status == .playing }
-    var sourceLabel: String { activeSource?.rawValue ?? "Источник не выбран" }
+    var sourceLabel: String {
+        if let source = activeSource { return source.rawValue }
+        if status == .loading { return "Подключение…" }
+        if status == .failed { return "Ошибка" }
+        return "Rhythm"
+    }
 
     let avPlayer = AVPlayer()
     let applePlayer = ApplicationMusicPlayer.shared
@@ -77,6 +82,22 @@ final class RhythmPlaybackEngine: ObservableObject {
         ) { [weak self] note in
             guard let self, note.object as? AVPlayerItem === self.avPlayer.currentItem else { return }
             Task { @MainActor in self.remoteFailed(note.object as? AVPlayerItem) }
+        }
+
+        setupRemoteCommands()
+    }
+
+    private func setupRemoteCommands() {
+        let center = MPRemoteCommandCenter.shared()
+        center.playCommand.addTarget { [weak self] _ in Task { @MainActor in self?.resume() }; return .success }
+        center.pauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.pause() }; return .success }
+        center.togglePlayPauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.toggle() }; return .success }
+        center.nextTrackCommand.addTarget { [weak self] _ in Task { @MainActor in self?.next() }; return .success }
+        center.previousTrackCommand.addTarget { [weak self] _ in Task { @MainActor in self?.previous() }; return .success }
+        center.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            Task { @MainActor in self?.seek(event.positionTime) }
+            return .success
         }
     }
 
