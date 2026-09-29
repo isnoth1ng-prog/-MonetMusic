@@ -715,7 +715,7 @@ final class MusicCatalog {
             let leftExact = $0.title.lowercased() == lower || $0.artist.lowercased() == lower
             let rightExact = $1.title.lowercased() == lower || $1.artist.lowercased() == lower
             if leftExact != rightExact { return leftExact }
-            if $0.isExplicit != $1.isExplicit { return !$0.isExplicit }
+            if $0.isExplicit != $1.isExplicit { return $0.isExplicit }
             return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
         }
     }
