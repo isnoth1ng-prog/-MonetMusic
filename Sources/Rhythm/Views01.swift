@@ -27,7 +27,7 @@ struct RootView: View {
             NavigationStack { FavoritesView() }
                 .tag(2)
 
-            NavigationStack { SettingsView() }
+            NavigationStack { ConfigScreen() }
                 .tag(3)
         }
         .toolbar(.hidden, for: .tabBar)
