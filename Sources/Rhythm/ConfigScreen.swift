@@ -60,7 +60,7 @@ struct ConfigScreen: View {
                 }
 
                 section("Rhythm") {
-                    row("Версия", "number", "5.4")
+                    row("Версия", "number", "5.5")
                     Text("Apple Music используется для полного воспроизведения каталога. Фоновое аудио включено.")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(RhythmTheme.secondary)

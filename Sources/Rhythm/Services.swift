@@ -4,12 +4,18 @@ enum RhythmError: LocalizedError {
     case badResponse
     case noResults
     case mismatch
+    case appleMusicAuthorization
+    case appleMusicSubscription
+    case appleMusicPlayback
 
     var errorDescription: String? {
         switch self {
         case .badResponse: return "Источник музыки не ответил корректно."
         case .noResults: return "Точный полный трек у источника не найден."
         case .mismatch: return "Источник вернул другой трек или несовпадающую длительность."
+        case .appleMusicAuthorization: return "Rhythm не получил доступ к Apple Music."
+        case .appleMusicSubscription: return "У Apple Music сейчас недоступно воспроизведение каталога."
+        case .appleMusicPlayback: return "Apple Music нашёл трек, но не запустил воспроизведение."
         }
     }
 }

@@ -29,8 +29,13 @@ final class AppleMusicSourceAdapter: PlaybackSourceAdapter {
     let id: PlaybackSourceID = .appleMusic
 
     func prepare(_ track: Track) async throws -> PlaybackSession {
-        guard await MusicAuthorization.request() == .authorized else {
-            throw RhythmError.noResults
+        let authorization = await MusicAuthorization.request()
+        guard authorization == .authorized else {
+            throw RhythmError.appleMusicAuthorization
+        }
+
+        guard try await MusicSubscription.current.canPlayCatalogContent else {
+            throw RhythmError.appleMusicSubscription
         }
 
         let cleanArtist = track.artist.replacingOccurrences(of: "[^a-zA-Zа-яА-ЯёЁ0-9\\s]", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)

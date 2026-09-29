@@ -172,11 +172,32 @@ final class RhythmPlaybackEngine: ObservableObject {
         activeSource = .appleMusic
         status = .loading
         self.duration = duration
-        applePlayer.queue = [song]
+        applePlayer.queue = ApplicationMusicPlayer.Queue(for: [song], startingAt: song)
         try await applePlayer.prepareToPlay()
         guard g == generation else { return }
+
+        guard applePlayer.isPreparedToPlay else {
+            throw RhythmError.appleMusicPlayback
+        }
+
         try await applePlayer.play()
         guard g == generation else { return }
+
+        // MusicKit can return from play() before the state has transitioned.
+        // Give the player a short window to enter the playing state and fail
+        // over if it immediately stops.
+        for _ in 0..<15 {
+            guard g == generation else { return }
+            if applePlayer.state.playbackStatus == .playing {
+                break
+            }
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
+
+        guard applePlayer.state.playbackStatus == .playing else {
+            throw RhythmError.appleMusicPlayback
+        }
+
         diagnostic(.appleMusic, "Apple Music: полный трек запущен", true)
         status = .playing
         streamError = nil
