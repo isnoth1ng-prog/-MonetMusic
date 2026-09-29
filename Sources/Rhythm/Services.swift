@@ -115,7 +115,7 @@ final class AudiusService {
     private func isPlayable(_ value: TrackResponse) -> Bool {
         let streamable = value.isStreamable?.lowercased() == "true"
         let title = value.title.lowercased()
-        let blocked = ["karaoke", "tribute", "bootleg", "reupload", "re-upload", "unofficial", "nightcore", "8d audio", "sped up", "slowed", "ai cover", "type beat", "instrumental cover"].contains { title.contains($0) }
+        let blocked = ["karaoke", "tribute", "bootleg", "reupload", "re-upload", "unofficial", "nightcore", "8d audio", "sped up", "slowed", "ai cover", "type beat", "instrumental cover", "censored", "radio edit", "radio version", "clean version", "clean edit"].contains { title.contains($0) }
         return streamable && value.isStreamGated != true && (value.duration ?? 0) >= 45 && !blocked
     }
 
@@ -419,7 +419,7 @@ final class PipedService {
             "live", "concert", "karaoke", "tribute", "cover", "remix",
             "bootleg", "reupload", "re-upload", "unofficial", "nightcore",
             "8d audio", "sped up", "slowed", "slowed + reverb", "ai cover",
-            "type beat", "instrumental", "reaction", "lyrics video", "fan made"
+            "type beat", "instrumental", "reaction", "lyrics video", "fan made", "censored", "radio edit", "radio version", "clean version", "clean edit"
         ]
         return blocked.contains { lower.contains($0) }
     }
