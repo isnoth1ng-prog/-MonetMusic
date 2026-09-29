@@ -36,7 +36,5 @@
         <key>NSAllowsArbitraryLoads</key>
         <true/>
     </dict>
-    <key>NSAppleMusicUsageDescription</key>
-    <string>Rhythm использует Apple Music для потокового воспроизведения музыки прямо на iPhone.</string>
 </dict>
 </plist>
