@@ -30,7 +30,6 @@ struct PlaybackSession {
         guard track.source == .catalog, let id = Int(track.id) else { throw RhythmError.noResults }
         guard await MusicAuthorization.request() == .authorized else { throw RhythmError.noResults }
         var request = MusicCatalogResourceRequest<Song>(matching: \.id, equalTo: MusicItemID(String(id)))
-        request.options = [.findEquivalents]
         let response = try await request.response()
         guard let song = response.items.first else { throw RhythmError.noResults }
         return PlaybackSession(source: .appleMusic, payload: .appleMusic(song), duration: song.duration ?? track.duration)
