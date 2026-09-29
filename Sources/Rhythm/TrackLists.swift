@@ -34,13 +34,13 @@ struct TrackRow: View {
     let track: Track
     var body: some View {
         HStack(spacing: 12) {
-            Button { player.play(track) } label { CoverView(url: track.highResCoverURL, size: 58, radius: 15) }.buttonStyle(.plain)
+            Button { player.play(track) } label: { CoverView(url: track.highResCoverURL, size: 58, radius: 15) }.buttonStyle(.plain)
             VStack(alignment: .leading, spacing: 4) {
                 Text(track.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
                 Text(track.artist).font(.system(size: 13, weight: .medium)).foregroundStyle(RhythmTheme.secondary).lineLimit(1)
             }
             Spacer()
-            Button { player.toggleLike(track) } label {
+            Button { player.toggleLike(track) } label: {
                 Image(systemName: player.isLiked(track) ? "heart.fill" : "heart")
                     .foregroundStyle(player.isLiked(track) ? RhythmTheme.accent : RhythmTheme.secondary)
             }.buttonStyle(.plain)
