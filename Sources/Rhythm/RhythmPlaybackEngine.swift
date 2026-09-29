@@ -97,7 +97,7 @@ final class RhythmPlaybackEngine: ObservableObject {
         generation = UUID()
         attempted.removeAll()
         appleTask?.cancel(); lyricsTask?.cancel(); fallbackTask?.cancel()
-        applePlayer.stop()
+        applePlayer.pause()
         avPlayer.pause()
         avPlayer.replaceCurrentItem(with: nil)
 
@@ -157,6 +157,7 @@ final class RhythmPlaybackEngine: ObservableObject {
         try await applePlayer.play()
         guard g == generation else { return }
         diagnostic(.appleMusic, "Apple Music: полный трек запущен", true)
+        status = .playing
         streamError = nil
 
         appleTask?.cancel()
