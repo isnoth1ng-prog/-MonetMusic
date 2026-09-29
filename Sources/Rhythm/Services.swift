@@ -360,8 +360,13 @@ final class PipedService {
                 .filter { !$0.isEmpty }
 
             if !parsed.isEmpty {
-                cachedInstances = Array(NSOrderedSet(array: parsed)) as? [String] ?? parsed
-                return cachedInstances ?? fallbackInstances
+                var unique: [String] = []
+                var seen = Set<String>()
+                for value in parsed where seen.insert(value).inserted {
+                    unique.append(value)
+                }
+                cachedInstances = unique
+                return unique
             }
         }
 
@@ -456,7 +461,6 @@ final class MusicCatalog {
         let collectionType: String?
         let trackCount: Int?
         let artworkUrl100: String?
-        let previewUrl: String?
         let trackTimeMillis: Int?
         let primaryGenreName: String?
         let releaseDate: String?
@@ -796,38 +800,5 @@ final class MusicCatalog {
             guard !text.isEmpty else { return nil }
             return LyricLine(text: text, time: minutes * 60 + seconds)
         }.sorted { $0.time < $1.time }
-    }
-}
-
-@MainActor
-final class AppleMusicService: ObservableObject {
-    static let shared = AppleMusicService()
-    @Published private(set) var authorization = MusicAuthorization.currentStatus
-
-    private init() {}
-
-    func requestAuthorization() async -> Bool {
-        let status = await MusicAuthorization.request()
-        authorization = status
-        return status == .authorized
-    }
-
-    func resolveSong(for track: Track) async throws -> Song {
-        let request = MusicCatalogSearchRequest(
-            term: "(track.artist) (track.title)",
-            types: [Song.self]
-        )
-        var mutable = request
-        mutable.limit = 8
-        let response = try await mutable.response()
-
-        if let exact = response.songs.first(where: {
-            $0.title.caseInsensitiveCompare(track.title) == .orderedSame &&
-            $0.artistName.caseInsensitiveCompare(track.artist) == .orderedSame
-        }) {
-            return exact
-        }
-        if let first = response.songs.first { return first }
-        throw RhythmError.noResults
     }
 }
