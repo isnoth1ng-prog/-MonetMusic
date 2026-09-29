@@ -1,17 +1,14 @@
 import Foundation
-import MusicKit
 
 enum RhythmError: LocalizedError {
     case badResponse
     case noResults
-    case unauthorized
     case mismatch
 
     var errorDescription: String? {
         switch self {
         case .badResponse: return "Источник музыки не ответил корректно."
         case .noResults: return "Точный полный трек у источника не найден."
-        case .unauthorized: return "Доступ к Apple Music не авторизован."
         case .mismatch: return "Источник вернул другой трек или несовпадающую длительность."
         }
     }
@@ -120,6 +117,308 @@ final class AudiusService {
         let title = value.title.lowercased()
         let blocked = ["karaoke", "tribute", "bootleg", "reupload", "re-upload", "unofficial", "nightcore", "8d audio", "sped up", "slowed", "ai cover", "type beat", "instrumental cover"].contains { title.contains($0) }
         return streamable && value.isStreamGated != true && (value.duration ?? 0) >= 45 && !blocked
+    }
+
+    private func normalized(_ value: String) -> String {
+        value
+            .lowercased()
+            .replacingOccurrences(of: "[^a-zа-яё0-9]+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+final class PipedService {
+    static let shared = PipedService()
+
+    struct Resolved {
+        let url: URL
+        let duration: Double
+        let instance: String
+    }
+
+    private struct SearchResponse: Decodable {
+        let items: [SearchItem]
+    }
+
+    private struct SearchItem: Decodable {
+        let type: String?
+        let duration: Int?
+        let title: String?
+        let uploaderName: String?
+        let url: String?
+    }
+
+    private struct StreamResponse: Decodable {
+        let audioStreams: [AudioStream]?
+        let duration: Int?
+        let title: String?
+        let livestream: Bool?
+    }
+
+    private struct AudioStream: Decodable {
+        let url: String?
+        let format: String?
+        let mimeType: String?
+        let codec: String?
+        let bitrate: Int?
+        let videoOnly: Bool?
+    }
+
+    private struct Instance: Decodable {
+        let apiUrl: String
+        let cdn: Bool?
+        let uptime24h: Double?
+    }
+
+    private let session: URLSession
+    private let fallbackInstances = [
+        "https://pipedapi.kavin.rocks",
+        "https://pipedapi.leptons.xyz",
+        "https://pipedapi.nosebs.ru",
+        "https://pipedapi-libre.kavin.rocks",
+        "https://piped-api.privacy.com.de",
+        "https://pipedapi.adminforge.de",
+        "https://api.piped.yt",
+        "https://pipedapi.drgns.space",
+        "https://pipedapi.owo.si",
+        "https://pipedapi.ducks.party"
+    ]
+    private var cachedInstances: [String]?
+    private var quarantinedUntil: [String: Date] = [:]
+
+    private init() {
+        let c = URLSessionConfiguration.ephemeral
+        c.timeoutIntervalForRequest = 8
+        c.timeoutIntervalForResource = 12
+        c.waitsForConnectivity = true
+        session = URLSession(configuration: c)
+    }
+
+    func resolve(_ track: Track) async -> Resolved? {
+        let instances = await loadInstances()
+        let queries = [
+            "(track.artist) (track.title)",
+            "(track.title) (track.artist)"
+        ]
+
+        for base in instances where !isQuarantined(base) {
+            do {
+                var candidates: [SearchItem] = []
+
+                for query in queries {
+                    candidates.append(contentsOf: try await search(query, baseURL: base))
+                    if let best = bestCandidate(candidates, for: track) {
+                        if let resolved = try await stream(for: best, baseURL: base, expected: track) {
+                            return resolved
+                        }
+                    }
+                }
+
+                throw RhythmError.noResults
+            } catch {
+                quarantine(base)
+            }
+        }
+
+        return nil
+    }
+
+    private func search(_ query: String, baseURL: String) async throws -> [SearchItem] {
+        var c = URLComponents(string: baseURL + "/search")!
+        c.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "filter", value: "music_songs")
+        ]
+
+        let request = URLRequest(url: c.url!)
+        let (data, response) = try await session.data(for: request)
+
+        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
+            throw RhythmError.badResponse
+        }
+
+        return try JSONDecoder().decode(SearchResponse.self, from: data).items
+            .filter { $0.type == "stream" }
+    }
+
+    private func stream(
+        for candidate: SearchItem,
+        baseURL: String,
+        expected: Track
+    ) async throws -> Resolved? {
+        guard let videoID = videoID(from: candidate.url),
+              let url = URL(string: baseURL + "/streams/" + videoID) else {
+            return nil
+        }
+
+        let (data, response) = try await session.data(from: url)
+        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
+            throw RhythmError.badResponse
+        }
+
+        let value = try JSONDecoder().decode(StreamResponse.self, from: data)
+        guard value.livestream != true else { return nil }
+
+        let resolvedDuration = Double(value.duration ?? candidate.duration ?? 0)
+        guard durationMatches(resolvedDuration, expected.duration) else { return nil }
+        guard titleMatches(value.title ?? candidate.title ?? "", expected.title) else { return nil }
+
+        guard let audio = selectAudio(value.audioStreams ?? []),
+              let streamURL = URL(string: audio.url) else {
+            return nil
+        }
+
+        return Resolved(
+            url: streamURL,
+            duration: resolvedDuration,
+            instance: baseURL
+        )
+    }
+
+    private func selectAudio(_ streams: [AudioStream]) -> AudioStream? {
+        let usable = streams.filter {
+            guard let url = $0.url, URL(string: url) != nil else { return false }
+            guard $0.videoOnly != true else { return false }
+
+            let format = ($0.format ?? "").uppercased()
+            let mime = ($0.mimeType ?? "").lowercased()
+            return format == "M4A"
+                || format == "MP3"
+                || mime == "audio/mp4"
+                || mime == "audio/mpeg"
+        }
+
+        return usable.sorted { lhs, rhs in
+            let leftFormat = (lhs.format ?? "").uppercased()
+            let rightFormat = (rhs.format ?? "").uppercased()
+            let leftPreferred = leftFormat == "M4A" || (lhs.mimeType ?? "").lowercased() == "audio/mp4"
+            let rightPreferred = rightFormat == "M4A" || (rhs.mimeType ?? "").lowercased() == "audio/mp4"
+
+            if leftPreferred != rightPreferred {
+                return leftPreferred
+            }
+            return (lhs.bitrate ?? 0) > (rhs.bitrate ?? 0)
+        }.first
+    }
+
+    private func bestCandidate(_ candidates: [SearchItem], for track: Track) -> SearchItem? {
+        let scored = candidates.compactMap { candidate -> (SearchItem, Double)? in
+            guard let title = candidate.title, !isNoise(title) else { return nil }
+            let normalizedTitle = normalized(title)
+            let expectedTitle = normalized(track.title)
+            let expectedArtist = normalized(track.artist)
+
+            let exactTitle = normalizedTitle == expectedTitle
+            let titleContains = normalizedTitle.contains(expectedTitle)
+            let artistInTitle = normalizedTitle.contains(expectedArtist)
+            let uploaderMatches = normalized(candidate.uploaderName ?? "") == expectedArtist
+
+            guard exactTitle || titleContains else { return nil }
+
+            var score = 0.0
+            if exactTitle { score += 8 }
+            if titleContains { score += 4 }
+            if artistInTitle { score += 5 }
+            if uploaderMatches { score += 4 }
+
+            if let duration = candidate.duration, track.duration > 0 {
+                let delta = abs(Double(duration) - track.duration)
+                if delta <= 6 { score += 6 }
+                else if delta <= 12 { score += 2 }
+                else { return nil }
+            }
+
+            return (candidate, score)
+        }
+
+        return scored.max { $0.1 < $1.1 }?.0
+    }
+
+    private func loadInstances() async -> [String] {
+        if let cachedInstances, !cachedInstances.isEmpty {
+            return cachedInstances
+        }
+
+        // Team Piped maintains the public list as a live source. We keep a
+        // known-good fallback list so a temporary list fetch failure never
+        // breaks playback completely.
+        let listURL = URL(string: "https://raw.githubusercontent.com/TeamPiped/documentation/main/content/docs/public-instances/index.md")!
+        if let (data, response) = try? await session.data(from: listURL),
+           let http = response as? HTTPURLResponse,
+           200..<300 ~= http.statusCode,
+           let markdown = String(data: data, encoding: .utf8) {
+            let parsed = markdown
+                .split(separator: "\n")
+                .compactMap { line -> (String, Bool)? in
+                    let parts = line.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+                    guard parts.count >= 4,
+                          parts[1].hasPrefix("http") else { return nil }
+                    return (parts[1], parts[3].lowercased() == "yes")
+                }
+                .sorted { $0.1 && !$1.1 }
+                .map { $0.0 }
+                .filter { !$0.isEmpty }
+
+            if !parsed.isEmpty {
+                cachedInstances = Array(NSOrderedSet(array: parsed)) as? [String] ?? parsed
+                return cachedInstances ?? fallbackInstances
+            }
+        }
+
+        cachedInstances = fallbackInstances
+        return fallbackInstances
+    }
+
+    private func isQuarantined(_ base: String) -> Bool {
+        guard let until = quarantinedUntil[base] else { return false }
+        if until <= Date() {
+            quarantinedUntil.removeValue(forKey: base)
+            return false
+        }
+        return true
+    }
+
+    private func quarantine(_ base: String) {
+        quarantinedUntil[base] = Date().addingTimeInterval(120)
+    }
+
+    private func videoID(from value: String?) -> String? {
+        guard let value else { return nil }
+
+        if let components = URLComponents(string: value),
+           let id = components.queryItems?.first(where: { $0.name == "v" })?.value,
+           id.count == 11 {
+            return id
+        }
+
+        if let range = value.range(of: #"v=([A-Za-z0-9_-]{11})"#, options: .regularExpression) {
+            let match = String(value[range])
+            return match.replacingOccurrences(of: "v=", with: "")
+        }
+
+        return nil
+    }
+
+    private func durationMatches(_ value: Double, _ expected: Double) -> Bool {
+        guard expected > 0 else { return value > 0 }
+        return value > 0 && abs(value - expected) <= 12
+    }
+
+    private func titleMatches(_ value: String, _ expected: String) -> Bool {
+        let actual = normalized(value)
+        let target = normalized(expected)
+        return actual == target || actual.contains(target)
+    }
+
+    private func isNoise(_ value: String) -> Bool {
+        let lower = value.lowercased()
+        let blocked = [
+            "live", "concert", "karaoke", "tribute", "cover", "remix",
+            "bootleg", "reupload", "re-upload", "unofficial", "nightcore",
+            "8d audio", "sped up", "slowed", "slowed + reverb", "ai cover",
+            "type beat", "instrumental", "reaction", "lyrics video", "fan made"
+        ]
+        return blocked.contains { lower.contains($0) }
     }
 
     private func normalized(_ value: String) -> String {
@@ -471,7 +770,7 @@ final class MusicCatalog {
             genre: item.primaryGenreName,
             releaseDate: item.releaseDate.flatMap(parseDate),
             isExplicit: item.trackExplicitness == "explicit",
-            source: .appleMusicCatalog
+            source: .catalog
         )
     }
 
