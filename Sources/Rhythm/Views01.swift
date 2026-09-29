@@ -63,7 +63,7 @@ struct RootView: View {
             .padding(.top, 7)
         }
         .fullScreenCover(isPresented: $showPlayer) {
-            FixedFullPlayerView()
+            CleanFullPlayerView()
                 .environmentObject(player)
         }
         .environmentObject(player)
