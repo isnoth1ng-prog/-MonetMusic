@@ -28,3 +28,38 @@ struct HorizontalTracks: View {
         }
     }
 }
+
+struct TrackRow: View {
+    @EnvironmentObject private var player: RhythmPlayer
+    let track: Track
+    var body: some View {
+        HStack(spacing: 12) {
+            Button { player.play(track) } label { CoverView(url: track.highResCoverURL, size: 58, radius: 15) }.buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(track.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                Text(track.artist).font(.system(size: 13, weight: .medium)).foregroundStyle(RhythmTheme.secondary).lineLimit(1)
+            }
+            Spacer()
+            Button { player.toggleLike(track) } label {
+                Image(systemName: player.isLiked(track) ? "heart.fill" : "heart")
+                    .foregroundStyle(player.isLiked(track) ? RhythmTheme.accent : RhythmTheme.secondary)
+            }.buttonStyle(.plain)
+        }.padding(.vertical, 7)
+    }
+}
+
+struct EmptySearch: View {
+    let title: String
+    let subtitle: String
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "waveform").font(.system(size: 36)).foregroundStyle(RhythmTheme.accent.opacity(0.65))
+            Text(title).font(.system(size: 21, weight: .semibold, design: .rounded))
+            Text(subtitle).font(.system(size: 14, weight: .medium)).foregroundStyle(RhythmTheme.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.top, 90)
+    }
+}
+
+extension Text {
+    func sectionTitle() -> some View { self.font(.system(size: 21, weight: .bold, design: .rounded)) }
+}
