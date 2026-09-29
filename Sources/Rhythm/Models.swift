@@ -26,7 +26,6 @@ struct Track: Identifiable, Hashable, Codable {
     enum TrackSource: String, Codable, Hashable {
         case catalog
         case audius
-        case previewFallback
     }
 
     enum CodingKeys: String, CodingKey {
@@ -51,8 +50,6 @@ struct Track: Identifiable, Hashable, Codable {
         switch rawSource {
         case "audius":
             source = .audius
-        case "previewFallback":
-            source = .previewFallback
         default:
             source = .catalog
         }
