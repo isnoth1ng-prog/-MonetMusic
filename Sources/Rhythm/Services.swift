@@ -197,8 +197,8 @@ final class PipedService {
     func resolve(_ track: Track) async -> Resolved? {
         let instances = await loadInstances()
         let queries = [
-            "(track.artist) (track.title)",
-            "(track.title) (track.artist)"
+            "\(track.artist) \(track.title)",
+            "\(track.title) \(track.artist)"
         ]
 
         for base in instances where !isQuarantined(base) {
@@ -264,7 +264,8 @@ final class PipedService {
         guard titleMatches(value.title ?? candidate.title ?? "", expected.title) else { return nil }
 
         guard let audio = selectAudio(value.audioStreams ?? []),
-              let streamURL = URL(string: audio.url) else {
+              let audioURL = audio.url,
+              let streamURL = URL(string: audioURL) else {
             return nil
         }
 
