@@ -769,7 +769,7 @@ final class MusicCatalog {
             album: item.collectionName,
             albumID: item.collectionId,
             coverURL: item.artworkUrl100.flatMap(URL.init(string:)),
-            audioURL: item.previewUrl.flatMap(URL.init(string:)),
+            audioURL: nil,
             duration: Double(item.trackTimeMillis ?? 0) / 1000,
             genre: item.primaryGenreName,
             releaseDate: item.releaseDate.flatMap(parseDate),
