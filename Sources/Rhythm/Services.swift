@@ -164,12 +164,6 @@ final class PipedService {
         let videoOnly: Bool?
     }
 
-    private struct Instance: Decodable {
-        let apiUrl: String
-        let cdn: Bool?
-        let uptime24h: Double?
-    }
-
     private let session: URLSession
     private let fallbackInstances = [
         "https://pipedapi.kavin.rocks",
@@ -216,6 +210,9 @@ final class PipedService {
 
                 throw RhythmError.noResults
             } catch {
+                if case RhythmError.noResults = error {
+                    continue
+                }
                 quarantine(base)
             }
         }
