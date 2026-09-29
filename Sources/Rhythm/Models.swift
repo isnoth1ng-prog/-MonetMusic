@@ -47,11 +47,13 @@ struct Track: Identifiable, Hashable, Codable {
         genre = try c.decodeIfPresent(String.self, forKey: .genre)
         releaseDate = try c.decodeIfPresent(Date.self, forKey: .releaseDate)
         isExplicit = try c.decodeIfPresent(Bool.self, forKey: .isExplicit) ?? false
-        if let value = try c.decodeIfPresent(TrackSource.self, forKey: .source) {
-            source = value
-        } else if let legacy = try c.decodeIfPresent(String.self, forKey: .source), legacy == "appleMusicCatalog" {
-            source = .catalog
-        } else {
+        let rawSource = try c.decodeIfPresent(String.self, forKey: .source)
+        switch rawSource {
+        case "audius":
+            source = .audius
+        case "previewFallback":
+            source = .previewFallback
+        default:
             source = .catalog
         }
     }
