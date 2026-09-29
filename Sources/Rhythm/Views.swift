@@ -823,8 +823,8 @@ struct SettingsView: View {
                 }
 
                 settingsSection("Rhythm") {
-                    LabeledContent("Версия", value: "4.1")
-                    LabeledContent("Каталог", value: "Audius full stream + Apple Music")
+                    LabeledContent("Версия", value: "5.1")
+                    LabeledContent("Источники", value: "Audius full stream + Piped")
                     LabeledContent("Тексты", value: "LRCLIB")
                     LabeledContent("Wave", value: "Адаптивная, трек за треком")
                 }
